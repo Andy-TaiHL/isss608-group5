@@ -2,18 +2,18 @@
 title: "Project Proposal"
 ---
 
-**\## Overview**
+## Overview
 
-\[Your proposal content here\]
+Your proposal content here
 
-**\## Problem Statement**
+## Problem Statement
 
-\[Describe the VAST Challenge problem you are addressing\]
+Describe the VAST Challenge problem you are addressing
 
-**\## Approach**
+## Approach
 
-\[How your team plans to tackle it\]
+How your team plans to tackle it
 
-**\## Timeline**
+## Timeline
 
-\[Your planned timeline\]
+Your planned timeline
