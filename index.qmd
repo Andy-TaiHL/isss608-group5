@@ -1,11 +1,109 @@
 ---
-title: "vast-challenge2026"
+title: ""
+format:
+  html:
+    css: styles.css
+    toc: false
+    page-layout: full
 ---
 
-This is a Quarto website.
+```{=html}
+<div class="hero-banner">
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="hero-tag">ISSS608 · Visual Analytics &amp; Applications · Group 5</div>
+    <h1 class="hero-title">VAST Challenge<br><span class="hero-year">2026</span></h1>
+    <p class="hero-desc">Uncovering hidden patterns through interactive visual analytics — built with R Shiny.</p>
+    <div class="hero-badges">
+      <span class="badge">R Shiny</span>
+      <span class="badge">Quarto</span>
+      <span class="badge">Visual Analytics</span>
+    </div>
+  </div>
+</div>
 
-To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
+<section class="content-section">
 
-```{r}
-1 + 1
+  <div class="two-col">
+
+    <div class="panel">
+      <div class="panel-label">The Challenge</div>
+      <p>
+        As part of <a href="https://vast-challenge.github.io/2026/index.html" target="_blank">VAST Challenge 2026</a>,
+        our team is addressing <strong>Mini-Challenge 1</strong> — using visual analytics to comb through TenantThread's internal communications to establish whether they made a deliberate decision to leak the merger information or the system simply broke down under pressure.
+        Our goal is to build an interactive Shiny application that democratises data and empowers
+        analysts to explore, interrogate and communicate findings visually.
+      </p>
+      <p>
+        The project emphasises <strong>interactivity</strong>, integrating techniques from
+        data analytics and visualisation to surface insights that static reports cannot.
+      </p>
+      <a class="cta-link" href="proposal.html">Read our proposal →</a>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">The Team</div>
+      <div class="team-list">
+        <div class="team-member">
+          <div class="avatar av-blue">AT</div>
+          <div>
+            <div class="member-name">Andy Tai</div>
+            <div class="member-sub">Group Member</div>
+          </div>
+        </div>
+        <div class="team-member">
+          <div class="avatar av-green">GF</div>
+          <div>
+            <div class="member-name">Goh Fangyu</div>
+            <div class="member-sub">Group Member</div>
+          </div>
+        </div>
+        <div class="team-member">
+          <div class="avatar av-amber">JY</div>
+          <div>
+            <div class="member-name">Jiang Yuxi</div>
+            <div class="member-sub">Group Member</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="milestone-strip">
+    <div class="panel-label" style="margin-bottom: 1.25rem;">Key milestones</div>
+    <div class="milestones">
+      <div class="ms-item ms-done">
+        <div class="ms-dot"></div>
+        <div class="ms-date">Now</div>
+        <div class="ms-text">Project setup &amp; proposal</div>
+      </div>
+      <div class="ms-line"></div>
+      <div class="ms-item ms-active">
+        <div class="ms-dot"></div>
+        <div class="ms-date">10 Jun</div>
+        <div class="ms-text">Proposal published on Vercel</div>
+      </div>
+      <div class="ms-line"></div>
+      <div class="ms-item">
+        <div class="ms-dot"></div>
+        <div class="ms-date">1 Jul</div>
+        <div class="ms-text">Poster uploaded on eLearn</div>
+      </div>
+      <div class="ms-line"></div>
+      <div class="ms-item">
+        <div class="ms-dot"></div>
+        <div class="ms-date">4 Jul</div>
+        <div class="ms-text">Poster presentation</div>
+      </div>
+      <div class="ms-line"></div>
+      <div class="ms-item">
+        <div class="ms-dot"></div>
+        <div class="ms-date">5 Jul</div>
+        <div class="ms-text">Final submission</div>
+      </div>
+    </div>
+  </div>
+
+</section>
 ```
