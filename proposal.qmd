@@ -21,9 +21,10 @@ information.
 
 Specifically, the investigation seeks to answer the following question:
 
-Did TenantThread’s team deliberately leak confidential merger
+**Did TenantThread’s team deliberately leak confidential merger
 information, or was the release the result of broader failures in
-governance, coordination, and compliance under organisational pressure?
+governance, coordination, and compliance under organisational
+pressure?**
 
 ## Objectives
 
