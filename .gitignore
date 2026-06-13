@@ -2,6 +2,15 @@
 .Rhistory
 .RData
 .Ruserdata
-
 /.quarto/
 **/*.quarto_ipynb
+
+# Data files — do not push to GitHub
+shiny-app/data/*.csv
+shiny-app/data/*.json
+shiny-app/data/*.xlsx
+shiny-app/data/*.xls
+shiny-app/data/*.rds
+shiny-app/data/*.parquet
+shiny-app/data/*.tsv
+shiny-app/data/*.txt
