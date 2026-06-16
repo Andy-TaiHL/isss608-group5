@@ -13,7 +13,7 @@ source("modules/swimlane.R")
 
 # ── UI ──────────────────────────────────────────────────────
 ui <- page_navbar(
-  title = "VAST Challenge 2026 · Group 5",
+  title = "VAST Challenge 2026",
   id = "navbar",
   theme = bs_theme(
     bg = "#0a1628",
