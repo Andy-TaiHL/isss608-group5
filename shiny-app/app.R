@@ -2,7 +2,7 @@
 # VAST Challenge 2026 · Group 5
 # Main App — integrates all modules
 # ============================================================
-
+source("packages.R")   # loads all packages
 library(shiny)
 library(bslib)
 
