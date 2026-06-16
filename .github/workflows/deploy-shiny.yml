@@ -33,6 +33,18 @@ jobs:
           )
           rsconnect::deployApp(
             appDir = "shiny-app/",
+            appFiles = c(
+              "app.R",
+              "packages.R",
+              "modules/keyword.R",
+              "modules/keyword_data_wrangling.R",
+              "modules/keyword_wordcloud.R",
+              "modules/keyword_semantic_network.R",
+              "modules/keyword_risk_timeline.R",
+              "modules/network.R",
+              "modules/swimlane.R",
+              "data/MC1_final_00.json"
+            ),
             appName = "vast-challenge2026",
             account = Sys.getenv("SHINYAPPS_ACCOUNT"),
             forceUpdate = TRUE
