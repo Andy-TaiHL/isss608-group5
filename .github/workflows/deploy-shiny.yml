@@ -16,8 +16,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          install.packages("rsconnect")
-          install.packages("shiny")
+          install.packages(c(
+            "rsconnect", "shiny", "bslib", "DT",
+            "dplyr", "tidyr", "purrr", "stringr", "ggplot2",
+            "forcats", "tidytext", "text2vec", "ggraph", "tidygraph",
+            "ggwordcloud", "ggrepel", "scales", "jsonlite", "lubridate"
+          ))
         shell: Rscript {0}
 
       - name: Deploy to shinyapps.io
