@@ -6,7 +6,13 @@
 #   glimpse(all_messages); glimpse(risk_tbl)
 # ============================================================
 
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(stringr)
+library(readr)
+library(ggplot2)
+library(forcats)
 library(tidytext)
 library(jsonlite)
 library(lubridate)
