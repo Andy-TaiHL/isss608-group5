@@ -11,6 +11,7 @@ library(bslib)
 library(DT)
 
 # tidyverse components (replacing library(tidyverse))
+library(tibble)
 library(dplyr)
 library(tidyr)
 library(purrr)

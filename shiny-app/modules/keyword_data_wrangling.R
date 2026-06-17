@@ -6,6 +6,7 @@
 #   glimpse(all_messages); glimpse(risk_tbl)
 # ============================================================
 
+library(tibble)
 library(dplyr)
 library(tidyr)
 library(purrr)
