@@ -14,7 +14,7 @@ jobs:
         run: |
           install.packages(c(
             "rsconnect", "shiny", "bslib", "DT",
-            "dplyr", "tidyr", "purrr", "stringr", "ggplot2",
+            "tibble", "dplyr", "tidyr", "purrr", "stringr", "ggplot2",
             "forcats", "readr", "tidytext", "text2vec",
             "ggraph", "tidygraph", "ggwordcloud", "ggrepel",
             "scales", "jsonlite", "lubridate", "Matrix"
