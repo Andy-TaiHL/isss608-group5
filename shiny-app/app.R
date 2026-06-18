@@ -24,6 +24,102 @@ ui <- page_navbar(
     heading_font = font_google("Playfair Display"),
     navbar_bg = "#0a1628"
   ),
+  header = tags$head(tags$style(HTML("
+    /* Remove gap between rows inside tab panels */
+    .tab-content > .tab-pane { padding:0 !important; }
+    .tab-content > .tab-pane > * { margin-bottom:0 !important; }
+    .tab-content > .tab-pane .row { margin-bottom:0 !important; }
+    /* Force DT tables to white background */
+    .dataTable { background:white !important; color:#1e293b !important; }
+    .dataTable thead th { background:#f8fafc !important; color:#1e293b !important;
+                          border-bottom:2px solid #e2e8f0 !important; }
+    .dataTable tbody tr { background:white !important; }
+    .dataTable tbody tr:nth-child(odd) { background:#f8fafc !important; }
+    .dataTable tbody td { color:#1e293b !important; border-color:#e2e8f0 !important; }
+    .dataTables_wrapper { color:#1e293b !important; }
+    .dataTables_info, .dataTables_paginate { color:#64748b !important; }
+    .paginate_button,
+    .paginate_button.previous,
+    .paginate_button.next { color:#334155 !important; background:white !important;
+                             border:1px solid #e2e8f0 !important; border-radius:4px; }
+    .paginate_button:hover,
+    .paginate_button.previous:hover,
+    .paginate_button.next:hover { background:#f1f5f9 !important; 
+                                   color:#1e293b !important; }
+    .paginate_button.current,
+    .paginate_button.current:hover { background:#1d4ed8 !important;
+                                      color:white !important;
+                                      border-color:#1d4ed8 !important; }
+    .paginate_button.disabled,
+    .paginate_button.disabled:hover { color:#94a3b8 !important;
+                                       background:white !important; }
+    /* Force entire pagination row white */
+    .dataTables_wrapper .dataTables_paginate { background:white !important;
+      padding:8px 0 !important; }
+    .dataTables_wrapper .dataTables_paginate span { background:white !important; }
+    .dataTables_wrapper .dataTables_paginate span .paginate_button {
+      background:white !important; color:#334155 !important; }
+    .dataTables_paginate { background:white !important; padding:4px 0 !important; }
+    .dataTables_info { background:white !important; padding:4px 0 !important; }
+    /* Force all DT wrapper elements white */
+    .dataTables_wrapper,
+    .dataTables_wrapper * { color:#1e293b !important; }
+    .dataTables_wrapper { background:white !important; }
+    .dataTables_wrapper .dataTable tbody tr td { background-color:white !important; }
+    .dataTables_wrapper .dataTable tbody tr:nth-child(odd) td { 
+      background-color:#f8fafc !important; }
+    /* Pagination - force all states */
+    .dataTables_wrapper .dataTables_paginate,
+    .dataTables_wrapper .dataTables_paginate * { background:white !important; }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+      background:white !important; color:#334155 !important;
+      border:1px solid #e2e8f0 !important; border-radius:4px !important; }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+      background:#1d4ed8 !important; color:white !important;
+      border-color:#1d4ed8 !important; }
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+      background:#f1f5f9 !important; color:#1e293b !important; }
+    .dataTables_wrapper .dataTables_info { background:white !important; }
+    /* Fix selectInput - both the input box and dropdown */
+    .selectize-input { background:white !important; color:#1e293b !important;
+                       border:1px solid #e2e8f0 !important; }
+    .selectize-input * { color:#1e293b !important; }
+    .selectize-dropdown, .selectize-dropdown-content {
+      background:white !important; color:#1e293b !important; }
+    .selectize-dropdown .option { color:#1e293b !important;
+                                   background:white !important; }
+    .selectize-dropdown .option:hover,
+    .selectize-dropdown .option.active { background:#1d4ed8 !important;
+                                          color:white !important; }
+    select, select option { background:white !important; color:#1e293b !important; }
+  ")),
+    tags$script(HTML("
+      // Fix DT pagination after every table draw
+      $(document).on('draw.dt', function() {
+        var pag = $('.dataTables_paginate');
+        pag.css('background','white');
+        pag.find('.paginate_button').css({
+          'background':'white',
+          'color':'#334155',
+          'border':'1px solid #e2e8f0',
+          'border-radius':'4px'
+        });
+        pag.find('.paginate_button.current').css({
+          'background':'#1d4ed8',
+          'color':'white',
+          'border-color':'#1d4ed8'
+        });
+        pag.find('.paginate_button.disabled').css({
+          'color':'#94a3b8'
+        });
+        $('.dataTables_info').css({'background':'white','color':'#64748b'});
+        // Fix table body
+        $('.dataTable tbody tr').css('background','white');
+        $('.dataTable tbody tr:nth-child(odd)').css('background','#f8fafc');
+        $('.dataTable tbody td').css('color','#1e293b');
+      });
+    "))
+  ),
 
   # ── Tab 1: Overview ───────────────────────────────────────
   nav_panel(

@@ -36,90 +36,131 @@ keywordUI <- function(id) {
   ns <- NS(id)
   tagList(
     tags$head(tags$style(HTML("
-      .kw-hdr    { background:#1a2940; color:white; padding:10px 18px;
+      .kw-hdr    { background:#1a2940; color:white !important; padding:10px 18px;
                    margin-bottom:12px; }
-      .kw-hdr h3 { margin:0; font-size:16px; font-weight:700; display:inline; }
+      .kw-hdr h3 { margin:0; font-size:16px; font-weight:700; display:inline;
+                   color:white !important; }
       .kw-hdr span { font-size:11px; opacity:.6; margin-left:12px; }
-      .kw-card   { background:white; border-radius:8px; padding:14px;
-                   box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:10px; }
+      /* Force white background + dark text on all cards regardless of bslib theme */
+      .kw-card   { background:white !important; border-radius:8px; padding:10px 12px;
+                   box-shadow:0 1px 4px rgba(0,0,0,.12); margin-bottom:4px; }
+      .kw-card, .kw-card * { color:#1e293b !important; }
+      .kw-card label,
+      .kw-card .form-check-label,
+      .kw-card .control-label { color:#334155 !important; font-size:13px !important; }
+      .kw-card p, .kw-card small { color:#64748b !important; }
+      .kw-card textarea  { color:#1e293b !important; background:white !important;
+                           border:1px solid #e2e8f0 !important; }
+      .kw-card select    { color:#1e293b !important; background:white !important; }
+      .kw-card .btn-primary { color:white !important; }
+      .kw-card .irs-min, .kw-card .irs-max,
+      .kw-card .irs-from, .kw-card .irs-to,
+      .kw-card .irs-single { color:#334155 !important;
+                              background:white !important; }
       .kw-card-A { border-top:3px solid #1d4ed8; }
       .kw-card-B { border-top:3px solid #15803d; }
-      .kw-ctrl   { font-size:10px; font-weight:700; color:#334155;
+      .kw-ctrl   { font-size:11px !important; font-weight:700; color:#334155 !important;
                    text-transform:uppercase; letter-spacing:.04em;
                    margin:10px 0 3px; display:block; }
-      .kw-hint   { font-size:10px; color:#94a3b8; margin:-1px 0 5px; }
-      .kw-tag-A  { background:#dbeafe; color:#1d4ed8; padding:2px 8px;
+      .kw-hint   { font-size:11px !important; color:#64748b !important;
+                   margin:-1px 0 5px; }
+      .kw-tag-A  { background:#dbeafe; color:#1d4ed8 !important; padding:2px 8px;
                    border-radius:3px; font-size:10px; font-weight:700; }
-      .kw-tag-B  { background:#dcfce7; color:#15803d; padding:2px 8px;
+      .kw-tag-B  { background:#dcfce7; color:#15803d !important; padding:2px 8px;
                    border-radius:3px; font-size:10px; font-weight:700; }
-      hr.kw-hr   { margin:8px 0; border-color:#f1f5f9; }
+      hr.kw-hr   { margin:8px 0; border-color:#e2e8f0; }
+      /* Compact top bar */
+      .kw-topbar .form-check-label { font-size:11px !important; }
+      .kw-topbar .form-check { margin-bottom:0 !important; margin-right:6px !important; }
+      .kw-topbar .shiny-input-container { margin-bottom:0 !important; }
+      .kw-topbar textarea { font-size:11px !important; padding:3px 6px !important; }
+      .kw-topbar .irs { margin-top:0 !important; }
+      .kw-topbar .form-check-inline { margin-right:4px !important; }
+      /* Eliminate gap - target bslib column padding directly */
+      .kw-row-charts > div { padding-bottom:0 !important; margin-bottom:0 !important; }
+      .kw-row-charts > div > div { margin-bottom:0 !important; }
+      .kw-row-table > div { padding-top:0 !important; margin-top:0 !important; }
+      /* Shrink the dark area between rows */
+      .container-fluid { row-gap:0 !important; }
+      /* Fix DT table visibility in dark theme */
+      .kw-card .dataTables_wrapper { color:#1e293b !important; }
+      .kw-card table.dataTable thead th,
+      .kw-card table.dataTable thead td { color:#1e293b !important;
+        background:#f8fafc !important; border-bottom:2px solid #e2e8f0 !important; }
+      .kw-card table.dataTable tbody tr { background:#ffffff !important;
+        color:#1e293b !important; }
+      .kw-card table.dataTable tbody tr:nth-child(odd) {
+        background:#f8fafc !important; }
+      .kw-card table.dataTable tbody td { color:#1e293b !important;
+        border-color:#e2e8f0 !important; }
+      .kw-card .dataTables_info,
+      .kw-card .dataTables_paginate { color:#64748b !important; }
+      .kw-card .paginate_button { color:#334155 !important; }
+      .kw-card .paginate_button.current { background:#1d4ed8 !important;
+        color:white !important; border-radius:4px; }
     "))),
 
-    div(class="kw-hdr",
-      h3("Keyword Explorer"),
-      span("Compare language & risk signals across embargo timeline periods")
-    ),
-
-    fluidRow(
-      # ── SHARED CONTROLS ──────────────────────────────────────────────────────
-      column(2,
-        div(class="kw-card",
-          tags$b("Shared Controls", style="font-size:11px; color:#334155;
-                  text-transform:uppercase;"),
-
-          tags$span("Channels", class="kw-ctrl"),
-          checkboxGroupInput(ns("channels"), label=NULL,
-            choices  = c("Group huddle"          = "comms_huddle",
-                         "1-on-1 / side huddle"  = "private",
-                         "Public posts"           = "public_post"),
-            selected = c("comms_huddle","private","public_post")),
-
-          hr(class="kw-hr"),
-          tags$span("Internal States", class="kw-ctrl"),
-          tags$p("Add agents' inner reasoning to corpus.", class="kw-hint"),
-          checkboxGroupInput(ns("int_states"), label=NULL,
-            choices  = c("Deliberating"  = "deliberating",
-                         "Rationalizing" = "rationalizing",
-                         "Reacting"      = "reacting"),
-            selected = character(0)),
-
-          hr(class="kw-hr"),
-          tags$span("Seed Words", class="kw-ctrl"),
-          tags$p("Comma-separated.", class="kw-hint"),
+    # ── TOP BAR: all shared controls in one compact row ─────────────────────
+    div(class="kw-card kw-topbar", style="margin-bottom:4px; padding:6px 10px;",
+      fluidRow(style="align-items:center;",
+        column(2,
+          tags$span("Channels", class="kw-ctrl", style="margin-top:0;"),
+          checkboxGroupInput(ns("channels"), label=NULL, inline=TRUE,
+            choices  = c("Group"  = "comms_huddle",
+                         "1-on-1" = "private",
+                         "Public" = "public_post"),
+            selected = c("comms_huddle","private","public_post"))
+        ),
+        column(2,
+          tags$span("Internal States", class="kw-ctrl", style="margin-top:0;"),
+          checkboxGroupInput(ns("int_states"), label=NULL, inline=TRUE,
+            choices  = c("Delib." = "deliberating",
+                         "Ration."= "rationalizing",
+                         "React." = "reacting"),
+            selected = character(0))
+        ),
+        column(3,
+          tags$span("Seed Words", class="kw-ctrl", style="margin-top:0;"),
           textAreaInput(ns("seeds_raw"), label=NULL,
-                        value=DEFAULT_SEEDS, rows=3, width="100%"),
-
-          hr(class="kw-hr"),
-          tags$span("Analysis Mode", class="kw-ctrl"),
-          radioButtons(ns("nlp_mode"), label=NULL,
-            choices  = c("Cosine (TF-IDF)"   = "cosine",
-                         "Simple frequency"   = "freq"),
-            selected = "cosine"),
-
+                        value=DEFAULT_SEEDS, rows=1, width="100%",
+                        resize="none")
+        ),
+        column(2,
+          tags$span("Analysis Mode", class="kw-ctrl", style="margin-top:0;"),
+          radioButtons(ns("nlp_mode"), label=NULL, inline=TRUE,
+            choices  = c("Cosine" = "cosine", "Simple" = "freq"),
+            selected = "cosine")
+        ),
+        column(2,
           conditionalPanel(
             condition = sprintf("input['%s'] == 'cosine'", ns("nlp_mode")),
-            tags$span("Cosine Threshold", class="kw-ctrl"),
+            tags$span("Cosine Threshold", class="kw-ctrl", style="margin-top:0;"),
             sliderInput(ns("threshold"), label=NULL,
-                        min=0.05, max=0.50, value=0.15, step=0.01)
-          ),
-
-          hr(class="kw-hr"),
-          actionButton(ns("go"), "Update", icon=icon("rotate"),
-                       class="btn-primary", width="100%",
-                       style="font-weight:600; font-size:12px;")
+                        min=0.05, max=0.50, value=0.15, step=0.05,
+                        ticks=FALSE)
+          )
+        ),
+        column(1,
+          tags$div(style="margin-top:18px;",
+            actionButton(ns("go"), "Update", icon=icon("rotate"),
+                         class="btn-primary", width="100%",
+                         style="font-size:11px; padding:5px 4px;
+                                line-height:1.2; white-space:nowrap;")
+          )
         )
-      ),
+      )
+    ),
 
-      # ── PANEL A ──────────────────────────────────────────────────────────────
-      column(5,
-        div(class="kw-card kw-card-A",
-          div(style="display:flex; align-items:center; gap:8px; margin-bottom:8px;",
+    # PANEL A + PANEL B
+    fluidRow(class="kw-row-charts",
+      column(6,
+        div(class="kw-card kw-card-A", style="margin-bottom:0; padding:10px;",
+          div(style="display:flex; align-items:center; gap:6px; margin-bottom:3px;",
             span(class="kw-tag-A", "Panel A"),
             span(style="font-size:11px; color:#64748b;",
                  textOutput(ns("label_A"), inline=TRUE))
           ),
-          # Period selector
-          div(style="margin-bottom:6px;",
+          div(style="margin-bottom:2px;",
             tags$span("PERIOD:", style="font-size:10px; font-weight:700;
                                          color:#334155; margin-right:6px;"),
             checkboxGroupInput(ns("periods_A"), label=NULL,
@@ -128,8 +169,7 @@ keywordUI <- function(id) {
                            "Post-Leak"      = "Post-Leak"),
               selected = "Pre-Embargo", inline=TRUE)
           ),
-          # Chart switcher
-          div(style="margin-bottom:10px;",
+          div(style="margin-bottom:6px;",
             tags$span("VIEW:", style="font-size:10px; font-weight:700;
                                        color:#334155; margin-right:6px;"),
             actionButton(ns("wc_A"),  "Word Cloud",
@@ -141,19 +181,17 @@ keywordUI <- function(id) {
             actionButton(ns("tl_A"),  "Risk Timeline",
                          class="btn btn-sm btn-outline-secondary")
           ),
-          plotOutput(ns("chart_A"), height="400px")
+          plotOutput(ns("chart_A"), height="300px", width="100%")
         )
       ),
-
-      # ── PANEL B ──────────────────────────────────────────────────────────────
-      column(5,
-        div(class="kw-card kw-card-B",
-          div(style="display:flex; align-items:center; gap:8px; margin-bottom:8px;",
+      column(6,
+        div(class="kw-card kw-card-B", style="margin-bottom:0; padding:10px;",
+          div(style="display:flex; align-items:center; gap:6px; margin-bottom:3px;",
             span(class="kw-tag-B", "Panel B"),
             span(style="font-size:11px; color:#64748b;",
                  textOutput(ns("label_B"), inline=TRUE))
           ),
-          div(style="margin-bottom:6px;",
+          div(style="margin-bottom:2px;",
             tags$span("PERIOD:", style="font-size:10px; font-weight:700;
                                          color:#334155; margin-right:6px;"),
             checkboxGroupInput(ns("periods_B"), label=NULL,
@@ -162,7 +200,7 @@ keywordUI <- function(id) {
                            "Post-Leak"      = "Post-Leak"),
               selected = "Post-Leak", inline=TRUE)
           ),
-          div(style="margin-bottom:10px;",
+          div(style="margin-bottom:6px;",
             tags$span("VIEW:", style="font-size:10px; font-weight:700;
                                        color:#334155; margin-right:6px;"),
             actionButton(ns("wc_B"),  "Word Cloud",
@@ -174,15 +212,17 @@ keywordUI <- function(id) {
             actionButton(ns("tl_B"),  "Risk Timeline",
                          class="btn btn-sm btn-outline-secondary")
           ),
-          plotOutput(ns("chart_B"), height="400px")
+          plotOutput(ns("chart_B"), height="300px", width="100%")
         )
       )
     ),
 
+    
+
     # ── SHARED TABLE ─────────────────────────────────────────────────────────
-    fluidRow(
-      column(10, offset=2,
-        div(class="kw-card",
+    fluidRow(class="kw-row-table",
+      column(12,
+        div(class="kw-card", style="margin-top:0;",
           tags$b("Signal Log", style="font-size:11px; color:#334155;
                   text-transform:uppercase;"),
           tags$p("Filter by layer and risk band, then search within results.",
@@ -262,11 +302,13 @@ keywordServer <- function(id) {
         switch(chart_rv(),
           wc  = plot_wordcloud(msgs_fn(), seeds(), input$nlp_mode,
                                input$threshold),
-          net = plot_network(msgs_fn(), seeds(), input$threshold),
+          net = plot_network(msgs_fn(), seeds(),
+                             threshold = input$threshold,
+                             mode      = input$nlp_mode),
           tl  = plot_risk_timeline(periods_fn(), seeds(),
                                input$nlp_mode, input$threshold)
         )
-      })
+      }, res = 96)
     }
 
     output$chart_A <- make_chart(msgs_A, reactive(input$periods_A), chart_A)
@@ -298,10 +340,10 @@ keywordServer <- function(id) {
 
       if (nrow(tbl) == 0) return(NULL)
 
-      # apply sort
+      # apply sort using Date_sort (POSIXct) not Date (string)
       tbl <- switch(input$tbl_sort,
-        date_desc = tbl %>% arrange(desc(Date)),
-        date_asc  = tbl %>% arrange(Date),
+        date_desc = tbl %>% arrange(desc(Date_sort)),
+        date_asc  = tbl %>% arrange(Date_sort),
         risk      = tbl %>% mutate(
           risk_order = case_when(
             risk_band == "CRITICAL" ~ 1,
@@ -309,43 +351,63 @@ keywordServer <- function(id) {
             risk_band == "MODERATE" ~ 3,
             risk_band == "LOW"      ~ 4,
             TRUE                    ~ 5
-          )) %>% arrange(risk_order, desc(Date)) %>% select(-risk_order),
+          )) %>% arrange(risk_order, Date_sort) %>% select(-risk_order),
         tbl
       )
 
+      # remove Date_sort before display
+      tbl <- tbl %>% select(-Date_sort)
       # colour mapping
       bg_vals <- c(CRITICAL="#fee2e2", HIGH="#fecaca",
                    MODERATE="#fef3c7", LOW="#dcfce7", NONE="#ffffff")
       fg_vals <- c(CRITICAL="#7f1d1d", HIGH="#b91c1c",
                    MODERATE="#b45309", LOW="#15803d", NONE="#1e293b")
 
+      # map each row's risk_band to its colour
+      # keep risk_band for styling, put it as last column then hide it
+      tbl_display <- tbl %>% select(-risk_band) %>%
+        mutate(risk_band = tbl$risk_band)
+
       datatable(
-        tbl %>% select(-risk_band),
+        tbl_display,
         rownames = FALSE,
-        filter   = "none",   # using our own filters above DT
+        filter   = "none",
         options  = list(
           pageLength = 5,
           scrollX    = TRUE,
-          dom        = "tip",   # no built-in search bar — we have our own
+          dom        = "tip",
           columnDefs = list(
-            list(width="30%", targets=6),  # Excerpt
-            list(width="13%", targets=0),  # Date
-            list(width="10%", targets=2)   # Layer
+            list(width="30%", targets=6),   # Excerpt
+            list(width="13%", targets=0),   # Date
+            list(width="10%", targets=2),   # Layer
+            list(visible=FALSE, targets=7)  # hide risk_band col
+          ),
+          initComplete = JS(
+            "function(settings, json) {",
+            "$(this.api().table().header()).css({'background-color':'#f8fafc','color':'#1e293b'});",
+            "}"
           )
         ),
-        class = "compact stripe"
+        class = "compact"
       ) %>%
         formatStyle(
           "Signal",
-          backgroundColor = styleEqual(tbl$Signal, bg_vals[tbl$risk_band]),
-          color           = styleEqual(tbl$Signal, fg_vals[tbl$risk_band]),
-          fontWeight      = "bold"
+          valueColumns    = "risk_band",
+          backgroundColor = styleEqual(
+            c("CRITICAL","HIGH","MODERATE","LOW","NONE"),
+            c("#fee2e2","#fecaca","#fef3c7","#dcfce7","#ffffff")
+          ),
+          color = styleEqual(
+            c("CRITICAL","HIGH","MODERATE","LOW","NONE"),
+            c("#7f1d1d","#b91c1c","#b45309","#15803d","#1e293b")
+          ),
+          fontWeight = "bold"
         ) %>%
         formatStyle(
           "Layer",
           backgroundColor = styleEqual(
             c("PT Risk Score","Warning Signal","Off-script Post"),
-            c("#f0fdf4",      "#fffbeb",       "#eff6ff")
+            c("#f0fdf4","#fffbeb","#eff6ff")
           ),
           fontWeight = "bold"
         )

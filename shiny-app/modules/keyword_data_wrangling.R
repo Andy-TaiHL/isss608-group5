@@ -145,11 +145,14 @@ filter_msgs <- function(periods,
            channel %in% keep_ch,
            !is.na(content), content != "")
 
+  if (length(int_states) == 0) return(base)
+
   int_rows <- map_dfr(int_states, function(s) {
     all_messages %>%
       filter(Period %in% periods) %>%
       mutate(content = .data[[s]]) %>%
-      filter(!is.na(content), content != "")
+      filter(!is.na(content), content != "") %>%
+      mutate(channel = paste0("internal_", s))  # tag so table shows source
   })
 
   bind_rows(base, int_rows)

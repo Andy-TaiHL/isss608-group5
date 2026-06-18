@@ -34,12 +34,32 @@ net_empty_plot <- function(msg) {
 plot_network <- function(msgs,
                          seeds     = character(0),
                          threshold = 0.15,
-                         top_n     = 10) {
+                         top_n     = NULL,
+                         mode      = "cosine") {
+
+  if (mode == "freq")
+    return(net_empty_plot(
+      "Semantic Network requires Cosine (TF-IDF) mode.\nSwitch Analysis Mode to Cosine to view."
+    ))
 
   if (length(seeds) == 0)
     return(net_empty_plot("Enter seed words to build the network."))
   if (nrow(msgs) == 0)
     return(net_empty_plot("No messages in this selection."))
+
+  # Auto top_n: fewer connections for larger corpora to avoid noise
+  if (is.null(top_n)) {
+    top_n <- case_when(
+      nrow(msgs) > 400 ~ 4,
+      nrow(msgs) > 200 ~ 6,
+      TRUE             ~ 10
+    )
+  }
+
+  # Log-scaled threshold: grows continuously with corpus size
+  # formula: threshold + log1p(n/100) * 0.05
+  # e.g. 145 msgs -> +0.049, 595 msgs -> +0.092, 117 msgs -> +0.038
+  effective_threshold <- threshold + log1p(nrow(msgs) / 100) * 0.05
 
   # Build corpus
   corpus <- msgs %>%
@@ -60,8 +80,10 @@ plot_network <- function(msgs,
   if (length(corpus) == 0) return(net_empty_plot("Corpus empty after cleaning."))
 
   it    <- itoken(corpus, tokenizer = word_tokenizer, progressbar = FALSE)
+  # stricter pruning for large corpora to reduce noise
+  min_docs <- if (length(corpus) > 400) 3 else 2
   vocab <- create_vocabulary(it) %>%
-    prune_vocabulary(term_count_min = 2, doc_count_min = 1) %>%
+    prune_vocabulary(term_count_min = 2, doc_count_min = min_docs) %>%
     filter(!term %in% EXTRA_STOPS, nchar(term) > 2)
   if (nrow(vocab) == 0) return(net_empty_plot("No vocabulary found."))
 
@@ -90,7 +112,7 @@ plot_network <- function(msgs,
         to != seed,
         !to %in% seeds,
         !to %in% EXTRA_STOPS,
-        weight > threshold
+        weight > effective_threshold
       ) %>%
       slice_max(weight, n = top_n)
   })
@@ -127,6 +149,11 @@ plot_network <- function(msgs,
     ) +
     scale_edge_width(range = c(0.4, 2.2)) +
     scale_edge_alpha(range = c(0.3, 0.9)) +
+    labs(caption = paste0(
+      "Cosine threshold: ", round(effective_threshold, 3),
+      " (base: ", threshold, " + log-scale corpus adjustment: +",
+      round(effective_threshold - threshold, 3), ")"
+    )) +
     theme_graph(base_family = "sans") +
     theme(
       legend.position = "bottom",

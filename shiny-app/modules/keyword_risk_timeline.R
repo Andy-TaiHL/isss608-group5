@@ -91,22 +91,13 @@ build_pt_extracted <- function(periods) {
           txt   <- str_remove(delib, "^Risk score[:\\s]+[\\d\\.]+/10[\\s\\.\\-—]*")
           txt   <- str_squish(txt)
           words <- str_split(txt, " ")[[1]]
-          line1 <- ""; line2 <- ""; on2 <- FALSE
+          line1 <- ""
           for (w in words) {
-            if (!on2) {
-              cand <- if (nchar(line1)==0) w else paste(line1, w)
-              if (nchar(cand) > 38) { on2 <- TRUE; line2 <- w }
-              else line1 <- cand
-            } else {
-              cand <- if (nchar(line2)==0) w else paste(line2, w)
-              if (nchar(cand) > 38) break
-              line2 <- cand
-            }
+            cand <- if (nchar(line1)==0) w else paste(line1, w)
+            if (nchar(cand) > 35) break
+            line1 <- cand
           }
-          if (nchar(line2) > 0)
-            paste0('"', line1, "\n", line2, '..."')
-          else
-            paste0('"', line1, '..."')
+          paste0('"', line1, '..."')
         },
         excerpt_full = str_trunc(delib, 300)
       )
@@ -290,7 +281,10 @@ build_timeline_table <- function(periods, seeds, mode, threshold) {
              Signal, Source, Excerpt=excerpt_full, risk_band)
   ) %>%
     arrange(Date) %>%
-    mutate(Date = format(Date, "%d %b %Y %H:%M"))
+    mutate(
+      Date_sort = Date,   # keep raw POSIXct for sorting
+      Date      = format(Date, "%d %b %Y %H:%M")
+    )
 }
 
 # ── MAIN PLOT ──────────────────────────────────────────────────────────────────
@@ -326,8 +320,8 @@ plot_risk_timeline <- function(periods,
     if (has_warn)  warn$timestamp,
     if (has_off)   off$timestamp
   ))
-  x_min <- min(all_times) - days(1)
-  x_max <- max(all_times) + days(3)
+  x_min <- min(all_times) - hours(12)
+  x_max <- max(all_times) + hours(12)
 
   # background shading
   shade_df <- tibble(
@@ -380,13 +374,13 @@ plot_risk_timeline <- function(periods,
         label.padding      = unit(0.2, "lines"),
         label.size         = 0.3,
         max.overlaps       = Inf,
-        force              = 8,
-        force_pull         = 0.1,
-        box.padding        = 1.2,
+        force              = 10,
+        force_pull         = 0.05,
+        box.padding        = 0.8,
         point.padding      = 0.5,
-        min.segment.length = 0.1,
-        nudge_y            = 0.8,   # push labels upward from points
-        direction          = "x",   # spread horizontally first
+        min.segment.length = 0.2,
+        nudge_y            = 2.0,
+        direction          = "x",
         show.legend        = FALSE
       )
   }
@@ -422,7 +416,10 @@ plot_risk_timeline <- function(periods,
     p <- p +
       geom_point(data=warn,
                  aes(x=timestamp, y=y_pos, colour=agent),
-                 shape=18, size=4, alpha=0.85)
+                 shape=18,
+                 size=if_else(nrow(warn)>30, 3, 4),
+                 alpha=0.75,
+                 position=position_jitter(width=3600*2, height=0, seed=42))
   }
 
   # ── Layer 3: off-script triangles ─────────────────────────────────────────
@@ -442,7 +439,10 @@ plot_risk_timeline <- function(periods,
     p <- p +
       geom_point(data=off,
                  aes(x=timestamp, y=y_pos, colour=agent),
-                 shape=17, size=3.5, alpha=0.85)
+                 shape=17,
+                 size=if_else(nrow(off)>20, 2.5, 3.5),
+                 alpha=0.75,
+                 position=position_jitter(width=3600*2, height=0, seed=42))
   }
 
   # ── event lines ───────────────────────────────────────────────────────────
@@ -465,19 +465,19 @@ plot_risk_timeline <- function(periods,
                size=2.6, colour="#B71C1C", fontface="bold")
   }
 
-  # ── row annotations ───────────────────────────────────────────────────────
+  # Row labels moved to y-axis annotation to save horizontal space
   if (has_pt_ex || has_pt_fm)
-    p <- p + annotate("text", x=x_max, y=7.0,
-                      label="← PT risk score (/10)\n  (dashed=extracted, ◆=formal)",
-                      hjust=1, size=2.4, colour="#1D9E75", fontface="bold")
+    p <- p + annotate("text", x=x_min, y=7.0,
+                      label="PT score →", hjust=0,
+                      size=2.2, colour="#1D9E75", fontface="bold")
   if (has_warn)
-    p <- p + annotate("text", x=x_max, y=2.5,
-                      label="← Warning signals\n  (deliberating)",
-                      hjust=1, size=2.4, colour="#64748b")
+    p <- p + annotate("text", x=x_min, y=2.5,
+                      label="Warnings →", hjust=0,
+                      size=2.2, colour="#64748b")
   if (has_off)
-    p <- p + annotate("text", x=x_max, y=1.0,
-                      label="← Off-script posts\n  (personal/anon)",
-                      hjust=1, size=2.4, colour="#64748b")
+    p <- p + annotate("text", x=x_min, y=1.0,
+                      label="Off-script →", hjust=0,
+                      size=2.2, colour="#64748b")
 
   # ── scales ────────────────────────────────────────────────────────────────
   risk_fills <- c(LOW="#dcfce7", MODERATE="#fef3c7",
@@ -497,24 +497,26 @@ plot_risk_timeline <- function(periods,
   }
 
   p <- p +
-    scale_fill_manual(
-      values = risk_fills, name = "Risk level",
-      guide  = guide_legend(
-        nrow=1, title.position="top",
-        override.aes=list(shape=21, size=5, stroke=1.5))
+    suppressWarnings(
+      scale_fill_manual(
+        values = risk_fills, name = "Risk level",
+        guide  = guide_legend(
+          nrow=1, title.position="left",
+          override.aes=list(shape=21, size=4, stroke=1.2)))
     ) +
     scale_colour_manual(
       values = c(risk_cols, agent_cols_used),
       name   = "Agent",
       breaks = names(agent_cols_used),
       guide  = guide_legend(
-        nrow=2, title.position="top",
-        override.aes=list(shape=18, size=4))
+        nrow=3, title.position="left",
+        override.aes=list(shape=18, size=3.5))
     ) +
     scale_x_datetime(
       date_labels = "%b %d",
       date_breaks = "3 days",
-      limits      = c(x_min, x_max)
+      limits      = c(x_min, x_max),
+      expand      = c(0.01, 0)
     ) +
     scale_y_continuous(
       name   = "Risk score (/10)",
@@ -528,19 +530,21 @@ plot_risk_timeline <- function(periods,
         "Layers 1 and 3 are independent of cosine/frequency setting"
       )
     ) +
-    theme_minimal(base_size=11) +
+    theme_minimal(base_size=10) +
     theme(
-      axis.text.x      = element_text(angle=45, hjust=1),
+      axis.text.x      = element_text(angle=45, hjust=1, size=8),
       legend.position  = "bottom",
       legend.box       = "horizontal",
-      legend.text      = element_text(size=8),
-      legend.title     = element_text(size=8, face="bold"),
-      legend.key.size  = unit(0.8, "lines"),
-      legend.spacing.x = unit(0.3, "cm"),
-      plot.subtitle    = element_text(size=8.5, colour="grey50"),
+      legend.text      = element_text(size=7),
+      legend.title     = element_text(size=7, face="bold"),
+      legend.key.size  = unit(0.6, "lines"),
+      legend.spacing.x = unit(0.15, "cm"),
+      legend.spacing.y = unit(0.05, "cm"),
+      legend.margin    = margin(2, 2, 2, 2),
+      plot.subtitle    = element_text(size=7.5, colour="grey50"),
       panel.grid.minor = element_blank(),
       plot.background  = element_rect(fill="white", colour=NA),
-      plot.margin      = margin(10, 100, 25, 10)
+      plot.margin      = margin(10, 60, 5, 10)
     )
 
   p

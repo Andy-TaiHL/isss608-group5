@@ -127,12 +127,22 @@ plot_wordcloud <- function(msgs,
   }
 
   ggplot(freq, aes(label = word, size = freq, colour = freq)) +
-    geom_text_wordcloud(area_corr = TRUE, seed = 42,
-                        family = "sans", fontface = "bold") +
-    scale_size_area(max_size = 18) +
-    scale_colour_gradient(low = "#3b82f6", high = "#1e3a8a") +
+    geom_text_wordcloud(
+      area_corr    = TRUE,
+      seed         = 42,
+      family       = "sans",
+      fontface     = "bold",
+      shape        = "square",
+      rm_outside   = TRUE,
+      eccentricity = 1        # perfectly square spiral
+    ) +
+    scale_size_area(max_size = 28) +
+    scale_colour_gradient(low = "#1d4ed8", high = "#0f172a") +
     theme_void() +
-    theme(plot.background = element_rect(fill = "white", colour = NA))
+    theme(
+      plot.background = element_rect(fill = "white", colour = NA),
+      plot.margin     = margin(5, 5, 5, 5)
+    )
 }
 
 message("keyword_wordcloud.R loaded.")
