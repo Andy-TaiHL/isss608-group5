@@ -3,14 +3,6 @@
 # Module: Swimlane Plot
 # Author: Jiang Yuxi
 # ============================================================
-# This module presents an interactive timeline showing each
-# agent's declared behaviour versus actual communication
-# behaviour over time.
-# Key features:
-#   - Agent Behaviour Heatmap (declared vs actual)
-#   - Behaviour Mismatch / Divergence Table
-#   - Compliance Violations
-# ============================================================
 
 library(shiny)
 library(bslib)
@@ -146,39 +138,27 @@ period_labels <- action_final_tbl %>%
     y_pos = length(unique(action_final_tbl$agent_label)) + 0.7
   )
 
-# ── Divergence summary table (declared MONITORING but posted)
-diverged_tbl <- action_final_tbl %>%
-  filter(divergence == "DIVERGED") %>%
-  mutate(
-    Date              = format(round_hour, "%d %b %H:%M"),
-    Agent             = agent_label,
-    `Declared`        = coalesce(declared_type, "—"),
-    `Actual channels` = map_chr(channels, ~paste(sort(.x), collapse = ", ")),
-    `Messages sent`   = n_messages
-  ) %>%
-  select(Date, Agent, Declared, `Actual channels`, `Messages sent`)
-
 # ── Risk Rankings calculations ───────────────────────────────
 # Violation weights: side_huddle = 1 (Low), personal_post = 2 (Medium),
 #                   anonymous_post = 3 (High)
-# Risk Score     = sum of per-event violation weights across all DIVERGED rounds
-# Mismatch Count = number of DIVERGED rounds per agent
-# Compliance Violation = highest severity level observed (Low / Medium / High / None)
-# Consistency Score    = consistent rounds / total active rounds
+# Risk Score          = sum of per-event violation weights across all DIVERGED rounds
+# Mismatch Count      = number of DIVERGED rounds per agent
+# Compliance Violation= highest severity level observed (Low / Medium / High / None)
+# Consistency Score   = consistent rounds / total active rounds
 
 risk_tbl <- action_final_tbl %>%
   group_by(agent_label) %>%
   summarise(
-    total_active_rounds  = n(),
-    mismatch_count       = sum(divergence == "DIVERGED"),
-    consistent_rounds    = sum(divergence == "Consistent"),
-    risk_score           = sum(case_when(
+    total_active_rounds = n(),
+    mismatch_count      = sum(divergence == "DIVERGED"),
+    consistent_rounds   = sum(divergence == "Consistent"),
+    risk_score          = sum(case_when(
       divergence == "DIVERGED" & effective_action == "Anonymous post"   ~ 3,
       divergence == "DIVERGED" & effective_action == "Personal post"    ~ 2,
       divergence == "DIVERGED" & effective_action == "Side huddle only" ~ 1,
       TRUE ~ 0
     )),
-    max_weight           = max(case_when(
+    max_weight          = max(case_when(
       divergence == "DIVERGED" & effective_action == "Anonymous post"   ~ 3L,
       divergence == "DIVERGED" & effective_action == "Personal post"    ~ 2L,
       divergence == "DIVERGED" & effective_action == "Side huddle only" ~ 1L,
@@ -224,7 +204,7 @@ score_tbl <- action_final_tbl %>%
                                     "Medium (2)", "High (3)"))
   )
 
-# ── Helper: build heatmap ggplot ─────────────────────────────
+# ── Helper: build swimlane heatmap ───────────────────────────
 build_heatmap <- function(data, highlight_anomalies = TRUE) {
   n_agents <- length(unique(data$agent_label))
   
@@ -266,7 +246,6 @@ build_heatmap <- function(data, highlight_anomalies = TRUE) {
       )
   }
   
-  # Period labels — recompute y_pos from filtered data
   pl <- period_labels %>%
     filter(round_label %in% levels(data$round_label)) %>%
     mutate(y_pos = n_agents + 0.7)
@@ -295,18 +274,17 @@ build_heatmap <- function(data, highlight_anomalies = TRUE) {
     ) +
     theme_minimal(base_size = 11) +
     theme(
-      axis.text.x   = element_text(angle = 45, hjust = 1, size = 8),
-      axis.text.y   = element_text(size = 10),
+      axis.text.x     = element_text(angle = 45, hjust = 1, size = 8),
+      axis.text.y     = element_text(size = 10),
       legend.position = "bottom",
-      plot.title    = element_text(size = 13, face = "bold"),
-      plot.subtitle = element_text(size = 9, colour = "grey40"),
-      panel.grid    = element_blank()
+      plot.title      = element_text(size = 13, face = "bold"),
+      plot.subtitle   = element_text(size = 9, colour = "grey40"),
+      panel.grid      = element_blank()
     )
 }
 
-
 # ── Helper: build behaviour scores heatmap ───────────────────
-build_score_heatmap <- function(data) {
+build_score_heatmap <- function(data, severity = NULL) {
   score_colours <- c(
     "Consistent (0)" = "#E8F5E9",
     "Low (1)"        = "#FFF176",
@@ -318,7 +296,15 @@ build_score_heatmap <- function(data) {
     filter(
       agent_label %in% unique(data$agent_label),
       round_label %in% levels(data$round_label)
-    ) %>%
+    )
+  
+  # Violation severity filter
+  if (!is.null(severity) && !"All Severities" %in% severity) {
+    score_data <- score_data %>%
+      filter(as.character(score_label) %in% severity)
+  }
+  
+  score_data <- score_data %>%
     mutate(round_label = factor(round_label, levels = levels(data$round_label)))
   
   n_agents <- length(unique(score_data$agent_label))
@@ -375,6 +361,7 @@ build_score_heatmap <- function(data) {
     )
 }
 
+
 # ── UI ──────────────────────────────────────────────────────
 swimlaneUI <- function(id) {
   ns <- NS(id)
@@ -384,13 +371,14 @@ swimlaneUI <- function(id) {
       title = "Swimlane Controls",
       width = 280,
       
-      # ── Agent Selection ──
-      selectInput(
+      # ── Agent Selection (× to remove tags) ──
+      selectizeInput(
         ns("agents"),
         "Select Agent(s)",
         choices  = c("All Agents", sort(unique(action_final_tbl$agent_label))),
         selected = "All Agents",
-        multiple = TRUE
+        multiple = TRUE,
+        options  = list(plugins = list("remove_button"))
       ),
       
       # ── Timeline ──
@@ -403,27 +391,56 @@ swimlaneUI <- function(id) {
       
       hr(),
       
-      # ── Indicators ──
-      checkboxGroupInput(
-        ns("indicators"),
-        "Show Indicators",
-        choices = c(
-          "Behaviour Mismatch Count"    = "mismatch",
-          "Compliance Violations"       = "compliance",
-          "Agent Risk Ranking"          = "risk",
-          "Behaviour Consistency Score" = "consistency"
-        ),
-        selected = c("mismatch", "compliance")
+      # ── Tab-specific filters ──
+      # Swimlane Timeline: filter by action type
+      conditionalPanel(
+        condition = paste0("input['", ns("active_tab"), "'] === 'Swimlane Timeline'"),
+        selectizeInput(
+          ns("actions"),
+          "Select Action(s)",
+          choices  = c(
+            "All Actions",
+            "Monitoring",
+            "Side huddle only",
+            "Official post",
+            "Personal post",
+            "Anonymous post",
+            "Compliance warning"
+          ),
+          selected = "All Actions",
+          multiple = TRUE,
+          options  = list(plugins = list("remove_button"))
+        )
+      ),
+      
+      # Behaviour Scores: filter by violation severity
+      conditionalPanel(
+        condition = paste0("input['", ns("active_tab"), "'] === 'Behaviour Scores'"),
+        selectizeInput(
+          ns("severity"),
+          "Select Violation Severity",
+          choices  = c("All Severities", "Consistent (0)", "Low (1)",
+                       "Medium (2)", "High (3)"),
+          selected = "All Severities",
+          multiple = TRUE,
+          options  = list(plugins = list("remove_button"))
+        )
+      ),
+      
+      # Risk Rankings: filter by compliance violation level
+      conditionalPanel(
+        condition = paste0("input['", ns("active_tab"), "'] === 'Risk Rankings'"),
+        selectizeInput(
+          ns("violation"),
+          "Select Compliance Violation",
+          choices  = c("All", "None", "Low", "Medium", "High"),
+          selected = "All",
+          multiple = TRUE,
+          options  = list(plugins = list("remove_button"))
+        )
       ),
       
       hr(),
-      
-      # ── Risk Threshold ──
-      sliderInput(
-        ns("risk_threshold"),
-        "Risk Threshold",
-        min = 0, max = 100, value = 50, step = 5
-      ),
       
       # ── Highlight Anomalies ──
       checkboxInput(
@@ -437,6 +454,7 @@ swimlaneUI <- function(id) {
     div(
       class = "p-3",
       navset_card_tab(
+        id = ns("active_tab"),
         
         nav_panel(
           "Swimlane Timeline",
@@ -467,7 +485,19 @@ swimlaneUI <- function(id) {
         nav_panel(
           "Behaviour Scores",
           card_body(
-            plotOutput(ns("score_heatmap"), height = "500px")
+            plotOutput(ns("score_heatmap"), height = "500px"),
+            hr(),
+            tags$style(HTML("
+              .score-summary-table thead tr th {
+                background-color: #388E3C !important;
+                color: white;
+                font-size: 12px;
+              }
+              .score-summary-table tbody tr:hover {
+                background-color: #f1f8e9 !important;
+              }
+            ")),
+            DTOutput(ns("score_summary_table"))
           )
         ),
         
@@ -511,6 +541,11 @@ swimlaneServer <- function(id) {
           as.Date(round_hour) <= input$timeline[2]
         )
       
+      # Action filter (Swimlane Timeline heatmap)
+      if (!is.null(input$actions) && !"All Actions" %in% input$actions) {
+        data <- data %>% filter(as.character(display_action) %in% input$actions)
+      }
+      
       # Drop unused round_label factor levels so x-axis stays clean
       data <- data %>%
         mutate(round_label = droplevels(round_label))
@@ -527,16 +562,74 @@ swimlaneServer <- function(id) {
     # ── Behaviour Scores Heatmap ──────────────────────────
     output$score_heatmap <- renderPlot({
       req(nrow(filtered_data()) > 0)
-      build_score_heatmap(filtered_data())
+      build_score_heatmap(filtered_data(), severity = input$severity)
     }, height = 500)
+    
+    # ── Behaviour Scores Summary Table ───────────────────
+    output$score_summary_table <- renderDT({
+      # Build per-agent severity counts from filtered data
+      score_summary <- score_tbl %>%
+        filter(
+          agent_label %in% unique(filtered_data()$agent_label),
+          round_label %in% levels(filtered_data()$round_label)
+        ) %>%
+        # Apply severity filter if set
+        {
+          d <- .
+          if (!is.null(input$severity) && !"All Severities" %in% input$severity)
+            d <- d %>% filter(as.character(score_label) %in% input$severity)
+          d
+        } %>%
+        group_by(agent_label) %>%
+        summarise(
+          `Consistent (0)` = sum(violation_score == 0),
+          `Low (1)`        = sum(violation_score == 1),
+          `Medium (2)`     = sum(violation_score == 2),
+          `High (3)`       = sum(violation_score == 3),
+          `Total Rounds`   = n(),
+          .groups = "drop"
+        ) %>%
+        arrange(desc(`High (3)`), desc(`Medium (2)`), desc(`Low (1)`)) %>%
+        rename(Agent = agent_label)
+      
+      datatable(
+        score_summary,
+        class    = "score-summary-table",
+        rownames = FALSE,
+        options  = list(
+          pageLength = 20,
+          dom        = "tip",
+          columnDefs = list(
+            list(className = "dt-center", targets = c(1, 2, 3, 4, 5))
+          )
+        )
+      ) %>%
+        formatStyle(columns = names(score_summary), fontSize = "12px") %>%
+        formatStyle(
+          "High (3)",
+          backgroundColor = styleInterval(c(0, 1), c("#F1F8E9", "#FFEBEE", "#FFCDD2"))
+        ) %>%
+        formatStyle(
+          "Medium (2)",
+          backgroundColor = styleInterval(c(0, 1), c("#F1F8E9", "#FFF8E1", "#FFE0B2"))
+        ) %>%
+        formatStyle(
+          "Low (1)",
+          backgroundColor = styleInterval(c(0, 1), c("#F1F8E9", "#FFFDE7", "#FFF176"))
+        )
+    })
     
     # ── Risk Rankings Table ───────────────────────────────
     output$risk_table <- renderDT({
-      # Filter risk_tbl to selected agents
       rt <- if (!is.null(input$agents) && !"All Agents" %in% input$agents) {
         risk_tbl %>% filter(Agent %in% input$agents)
       } else {
         risk_tbl
+      }
+      
+      # Compliance Violation filter
+      if (!is.null(input$violation) && !"All" %in% input$violation) {
+        rt <- rt %>% filter(`Compliance Violation` %in% input$violation)
       }
       
       violation_colours <- c(
@@ -553,17 +646,13 @@ swimlaneServer <- function(id) {
         options  = list(
           pageLength = 20,
           dom        = "tip",
-          order      = list(list(3, "desc")),   # sort by Risk Score desc
+          order      = list(list(3, "desc")),
           columnDefs = list(
-            list(className = "dt-center",
-                 targets   = c(1, 2, 3, 4))
+            list(className = "dt-center", targets = c(1, 2, 3, 4))
           )
         )
       ) %>%
-        formatStyle(
-          columns         = names(rt),
-          fontSize        = "12px"
-        ) %>%
+        formatStyle(columns = names(rt), fontSize = "12px") %>%
         formatStyle(
           "Compliance Violation",
           backgroundColor = styleEqual(
@@ -573,16 +662,16 @@ swimlaneServer <- function(id) {
         ) %>%
         formatStyle(
           "Risk Score",
-          background = styleColorBar(rt$`Risk Score`, "#1565C0"),
-          backgroundSize   = "100% 80%",
-          backgroundRepeat = "no-repeat",
+          background         = styleColorBar(rt$`Risk Score`, "#1565C0"),
+          backgroundSize     = "100% 80%",
+          backgroundRepeat   = "no-repeat",
           backgroundPosition = "center"
         ) %>%
         formatStyle(
           "Consistency Score",
-          background = styleColorBar(c(0, 1), "#43A047"),
-          backgroundSize   = "100% 80%",
-          backgroundRepeat = "no-repeat",
+          background         = styleColorBar(c(0, 1), "#43A047"),
+          backgroundSize     = "100% 80%",
+          backgroundRepeat   = "no-repeat",
           backgroundPosition = "center"
         )
     })
@@ -602,29 +691,21 @@ swimlaneServer <- function(id) {
       
       datatable(
         div_data,
-        class     = "diverge-table",
-        rownames  = FALSE,
-        options   = list(
+        class    = "diverge-table",
+        rownames = FALSE,
+        options  = list(
           pageLength = 15,
           dom        = "tip",
           columnDefs = list(
-            list(width = "10%",  targets = 0),
-            list(width = "12%",  targets = 1),
-            list(width = "15%",  targets = 2),
-            list(width = "48%",  targets = 3),
-            list(width = "10%",  className = "dt-center", targets = 4)
+            list(width = "10%", targets = 0),
+            list(width = "12%", targets = 1),
+            list(width = "15%", targets = 2),
+            list(width = "48%", targets = 3),
+            list(width = "10%", className = "dt-center", targets = 4)
           )
         )
       ) %>%
-        formatStyle(
-          columns         = names(div_data),
-          fontSize        = "11px"
-        ) %>%
-        formatStyle(
-          columns         = 0,
-          target          = "row",
-          backgroundColor = styleEqual("DIVERGED", "#fdecea")
-        )
+        formatStyle(columns = names(div_data), fontSize = "11px")
     })
     
   })
