@@ -30,6 +30,8 @@ library(tidygraph)
 library(ggwordcloud)
 library(ggrepel)
 library(scales)
+library(igraph)
+library(visNetwork)
 
 # data
 library(jsonlite)

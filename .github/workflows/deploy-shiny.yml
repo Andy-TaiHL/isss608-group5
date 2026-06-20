@@ -17,7 +17,8 @@ jobs:
             "tibble", "dplyr", "tidyr", "purrr", "stringr", "ggplot2",
             "forcats", "readr", "tidytext", "text2vec",
             "ggraph", "tidygraph", "ggwordcloud", "ggrepel",
-            "scales", "jsonlite", "lubridate", "Matrix"
+            "scales", "jsonlite", "lubridate", "Matrix",
+            "igraph", "visNetwork"
           ))
         shell: Rscript {0}
       - name: Deploy to shinyapps.io
