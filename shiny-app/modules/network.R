@@ -1,13 +1,10 @@
 # ============================================================
-# Network Analysis Module
+# Network Analysis Module (Base R version - no tidyverse)
 # ============================================================
 
 library(shiny)
 library(bslib)
 library(jsonlite)
-library(tidyverse)
-library(lubridate)
-library(tidygraph)
 library(igraph)
 library(DT)
 library(visNetwork)
@@ -18,74 +15,112 @@ library(visNetwork)
 
 mc1_raw <- fromJSON("data/MC1_final_00.json", flatten = TRUE)
 
-communications_tbl <- mc1_raw$rounds %>%
-  select(hour, communications) %>%
-  unnest(communications) %>%
-  mutate(
-    timestamp = ymd_hms(timestamp),
-    date = as_date(timestamp),
-    period = case_when(
-      date < as.Date("2046-05-23") ~ "Before Embargo Declaration",
-      date >= as.Date("2046-05-23") & date < as.Date("2046-06-05") ~ "After Embargo Declaration",
-      date == as.Date("2046-06-05") ~ "Breach Day",
-      TRUE ~ "Other"
-    )
-  )
+# --- equivalent of: rounds %>% select(hour, communications) %>% unnest(communications) ---
+rounds_df <- mc1_raw$rounds[, c("hour", "communications")]
 
-reply_edges <- communications_tbl %>%
-  filter(!is.na(responding_to)) %>%
-  left_join(
-    communications_tbl %>%
-      select(message_id, replied_to_agent = agent_label),
-    by = c("responding_to" = "message_id")
-  ) %>%
-  filter(!is.na(replied_to_agent)) %>%
-  transmute(
-    from = agent_label,
-    to = replied_to_agent,
-    timestamp,
-    date,
-    period,
-    channel,
-    message_type
-  )
+communications_tbl <- do.call(rbind, lapply(seq_len(nrow(rounds_df)), function(i) {
+  comms <- rounds_df$communications[[i]]
+  if (is.null(comms) || nrow(comms) == 0) return(NULL)
+  comms$hour <- rounds_df$hour[i]
+  comms
+}))
+row.names(communications_tbl) <- NULL
+
+# --- mutate(timestamp, date, period) ---
+communications_tbl$timestamp <- as.POSIXct(
+  communications_tbl$timestamp, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC"
+)
+communications_tbl$date <- as.Date(communications_tbl$timestamp)
+
+communications_tbl$period <- with(communications_tbl, ifelse(
+  date < as.Date("2046-05-23"), "Before Embargo Declaration",
+  ifelse(date >= as.Date("2046-05-23") & date < as.Date("2046-06-05"), "After Embargo Declaration",
+         ifelse(date == as.Date("2046-06-05"), "Breach Day", "Other"))
+))
+
+# =========================
+# Reply edges
+# =========================
+
+# --- filter(!is.na(responding_to)) ---
+has_reply <- communications_tbl[!is.na(communications_tbl$responding_to), ]
+
+# --- left_join lookup: message_id -> replied_to_agent ---
+lookup <- communications_tbl[, c("message_id", "agent_label")]
+names(lookup) <- c("responding_to", "replied_to_agent")
+
+reply_edges <- merge(has_reply, lookup, by = "responding_to", all.x = TRUE)
+reply_edges <- reply_edges[!is.na(reply_edges$replied_to_agent), ]
+
+# --- transmute(from, to, timestamp, date, period, channel, message_type) ---
+reply_edges <- data.frame(
+  from        = reply_edges$agent_label,
+  to          = reply_edges$replied_to_agent,
+  timestamp   = reply_edges$timestamp,
+  date        = reply_edges$date,
+  period      = reply_edges$period,
+  channel     = reply_edges$channel,
+  message_type = reply_edges$message_type,
+  stringsAsFactors = FALSE
+)
+
+# =========================
+# Centrality calculation
+# =========================
 
 calculate_metrics <- function(edge_data) {
   
-  network_edges <- edge_data %>%
-    count(from, to, name = "weight")
-  
-  network_nodes <- tibble(
-    name = unique(c(network_edges$from, network_edges$to))
-  )
-  
-  if (nrow(network_edges) == 0 || nrow(network_nodes) == 0) {
-    return(tibble(
+  if (is.null(edge_data) || nrow(edge_data) == 0) {
+    return(data.frame(
       Agent = character(),
       Betweenness = numeric(),
       Degree = numeric(),
       Closeness = numeric(),
-      Eigenvector = numeric()
+      Eigenvector = numeric(),
+      stringsAsFactors = FALSE
     ))
   }
   
-  agent_network <- tbl_graph(
-    nodes = network_nodes,
-    edges = network_edges,
+  # --- count(from, to, name = "weight") ---
+  network_edges <- aggregate(
+    list(weight = rep(1, nrow(edge_data))),
+    by = list(from = edge_data$from, to = edge_data$to),
+    FUN = sum
+  )
+  
+  network_nodes <- data.frame(
+    name = unique(c(network_edges$from, network_edges$to)),
+    stringsAsFactors = FALSE
+  )
+  
+  if (nrow(network_edges) == 0 || nrow(network_nodes) == 0) {
+    return(data.frame(
+      Agent = character(),
+      Betweenness = numeric(),
+      Degree = numeric(),
+      Closeness = numeric(),
+      Eigenvector = numeric(),
+      stringsAsFactors = FALSE
+    ))
+  }
+  
+  agent_network <- graph_from_data_frame(
+    d = network_edges,
+    vertices = network_nodes,
     directed = TRUE
   )
   
-  agent_network %>%
-    activate(nodes) %>%
-    mutate(
-      Degree = centrality_degree(),
-      Betweenness = round(centrality_betweenness(), 2),
-      Closeness = round(centrality_closeness(), 2),
-      Eigenvector = round(centrality_eigen(), 2)
-    ) %>%
-    as_tibble() %>%
-    rename(Agent = name) %>%
-    select(Agent, Betweenness, Degree, Closeness, Eigenvector)
+  metrics <- data.frame(
+    Agent       = V(agent_network)$name,
+    Degree      = degree(agent_network, mode = "all"),
+    Betweenness = round(betweenness(agent_network, directed = TRUE), 2),
+    Closeness   = round(closeness(agent_network, mode = "all"), 2),
+    Eigenvector = round(eigen_centrality(agent_network, directed = TRUE)$vector, 2),
+    stringsAsFactors = FALSE,
+    row.names = NULL
+  )
+  
+  metrics[, c("Agent", "Betweenness", "Degree", "Closeness", "Eigenvector")]
 }
 
 # =========================
@@ -197,67 +232,67 @@ networkServer <- function(id) {
       edge_data <- reply_edges
       
       if (input$time_period != "Entire Investigation") {
-        edge_data <- edge_data %>%
-          filter(period == input$time_period)
+        edge_data <- edge_data[edge_data$period == input$time_period, ]
       }
       
-      edge_data <- edge_data %>%
-        filter(
-          date >= input$timeline_range[1],
-          date <= input$timeline_range[2]
-        )
+      edge_data <- edge_data[
+        edge_data$date >= input$timeline_range[1] &
+          edge_data$date <= input$timeline_range[2],
+      ]
       
       if (input$agent_type != "All") {
-        selected_agents <- communications_tbl %>%
-          filter(agent_role == input$agent_type) %>%
-          pull(agent_label) %>%
-          unique()
+        selected_agents <- unique(
+          communications_tbl$agent_label[communications_tbl$agent_role == input$agent_type]
+        )
         
-        edge_data <- edge_data %>%
-          filter(from %in% selected_agents | to %in% selected_agents)
+        edge_data <- edge_data[
+          edge_data$from %in% selected_agents | edge_data$to %in% selected_agents,
+        ]
       }
       
       edge_data
     })
     
     filtered_metrics <- reactive({
-      calculate_metrics(filtered_edges()) %>%
-        arrange(desc(.data[[input$centrality_metric]]))
+      metrics <- calculate_metrics(filtered_edges())
+      metrics[order(-metrics[[input$centrality_metric]]), ]
     })
     
     output$network_graph <- renderVisNetwork({
       
-      edge_data <- filtered_edges() %>%
-        count(from, to, name = "weight") %>%
-        filter(weight > 0)
+      edge_data <- aggregate(
+        list(weight = rep(1, nrow(filtered_edges()))),
+        by = list(from = filtered_edges()$from, to = filtered_edges()$to),
+        FUN = sum
+      )
+      edge_data <- edge_data[edge_data$weight > 0, ]
       
       req(nrow(edge_data) > 0)
       
       metric_data <- calculate_metrics(filtered_edges())
       
-      node_data <- tibble(
-        id = unique(c(edge_data$from, edge_data$to)),
-        label = id
-      ) %>%
-        left_join(
-          metric_data %>%
-            select(Agent, Degree, Betweenness),
-          by = c("id" = "Agent")
-        ) %>%
-        mutate(
-          value = Degree,
-          title = paste0(
-            "<b>", id, "</b><br>",
-            "Degree: ", Degree, "<br>",
-            "Betweenness: ", Betweenness
-          ),
-          group = ifelse(
-            input$highlight_hubs &
-              Betweenness >= quantile(Betweenness, 0.75, na.rm = TRUE),
-            "Key Hub",
-            "Other Agent"
-          )
-        )
+      node_ids <- unique(c(edge_data$from, edge_data$to))
+      node_data <- data.frame(id = node_ids, label = node_ids, stringsAsFactors = FALSE)
+      
+      node_data <- merge(
+        node_data,
+        metric_data[, c("Agent", "Degree", "Betweenness")],
+        by.x = "id", by.y = "Agent", all.x = TRUE
+      )
+      
+      node_data$value <- node_data$Degree
+      node_data$title <- paste0(
+        "<b>", node_data$id, "</b><br>",
+        "Degree: ", node_data$Degree, "<br>",
+        "Betweenness: ", node_data$Betweenness
+      )
+      
+      hub_threshold <- quantile(node_data$Betweenness, 0.75, na.rm = TRUE)
+      node_data$group <- ifelse(
+        input$highlight_hubs & node_data$Betweenness >= hub_threshold,
+        "Key Hub",
+        "Other Agent"
+      )
       
       if (!input$show_labels) {
         node_data$label <- ""
@@ -303,43 +338,83 @@ networkServer <- function(id) {
       metric <- input$centrality_metric
       table_data <- filtered_metrics()
       
+      # table_data is already sorted desc by the selected metric in filtered_metrics()
+      n_top <- min(3, nrow(table_data))
+      table_data$Rank <- seq_len(nrow(table_data))
+      table_data$Top <- ifelse(table_data$Rank <= n_top, "Top Agent", "Other")
+      
+      metric_vals <- table_data[[metric]]
+      val_range <- range(metric_vals, na.rm = TRUE)
+      
+      # build a smooth color ramp from low-significance to high-significance
+      ramp <- colorRampPalette(c("#0a1628", "#163D77", "#2F80ED", "#56CCF2"))(100)
+      
+      # map each value to a color along the ramp based on its position in the range
+      if (diff(val_range) == 0 || all(is.na(metric_vals))) {
+        cell_colors <- rep(ramp[1], length(metric_vals))
+      } else {
+        scaled <- (metric_vals - val_range[1]) / diff(val_range)
+        idx <- pmax(1, pmin(100, round(scaled * 99) + 1))
+        cell_colors <- ramp[idx]
+      }
+      
       datatable(
         table_data,
         rownames = FALSE,
         options = list(
           pageLength = 10,
-          dom = "tip"
+          dom = "tip",
+          columnDefs = list(
+            list(visible = FALSE, targets = c("Rank", "Top"))
+          )
         )
       ) %>%
         formatStyle(
+          "Top",
+          target = "row",
+          backgroundColor = styleEqual(
+            c("Top Agent", "Other"),
+            c("#1B5E20", NA)
+          )
+        ) %>%
+        formatStyle(
+          "Agent",
+          fontWeight = styleEqual(c("Top Agent", "Other"), c("bold", "normal")),
+          valueColumns = "Top"
+        ) %>%
+        formatStyle(
           metric,
-          backgroundColor = styleInterval(
-            quantile(table_data[[metric]], c(0.7, 0.9), na.rm = TRUE),
-            c(NA, "#163D77", "#2F80ED")
-          ),
+          backgroundColor = styleEqual(metric_vals, cell_colors),
           color = "white",
-          fontWeight = "bold"
+          fontWeight = styleInterval(
+            quantile(metric_vals, 0.9, na.rm = TRUE),
+            c("normal", "bold")
+          )
         )
     })
     
     output$edge_preview <- renderTable({
-      filtered_edges() %>%
-        count(from, to, name = "weight") %>%
-        arrange(desc(weight)) %>%
-        head(10)
+      edge_data <- aggregate(
+        list(weight = rep(1, nrow(filtered_edges()))),
+        by = list(from = filtered_edges()$from, to = filtered_edges()$to),
+        FUN = sum
+      )
+      edge_data <- edge_data[order(-edge_data$weight), ]
+      head(edge_data, 10)
     })
     
     output$supporting_records <- renderDT({
       
-      records <- filtered_edges() %>%
-        arrange(desc(timestamp)) %>%
-        select(
-          Timestamp = timestamp,
-          From = from,
-          To = to,
-          Channel = channel,
-          `Message Type` = message_type
-        )
+      records <- filtered_edges()
+      records <- records[order(-as.numeric(records$timestamp)), ]
+      records <- data.frame(
+        Timestamp = records$timestamp,
+        From = records$from,
+        To = records$to,
+        Channel = records$channel,
+        `Message Type` = records$message_type,
+        check.names = FALSE
+      )
       
       datatable(
         records,
