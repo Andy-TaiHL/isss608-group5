@@ -160,6 +160,72 @@ diverged_tbl <- action_final_tbl %>%
   ) %>%
   select(Date, Agent, Declared, `Actual channels`, `Messages sent`)
 
+# ── Risk Rankings calculations ───────────────────────────────
+# Violation weights: side_huddle = 1 (Low), personal_post = 2 (Medium),
+#                   anonymous_post = 3 (High)
+# Risk Score     = sum of per-event violation weights across all DIVERGED rounds
+# Mismatch Count = number of DIVERGED rounds per agent
+# Compliance Violation = highest severity level observed (Low / Medium / High / None)
+# Consistency Score    = consistent rounds / total active rounds
+
+risk_tbl <- action_final_tbl %>%
+  group_by(agent_label) %>%
+  summarise(
+    total_active_rounds  = n(),
+    mismatch_count       = sum(divergence == "DIVERGED"),
+    consistent_rounds    = sum(divergence == "Consistent"),
+    risk_score           = sum(case_when(
+      divergence == "DIVERGED" & effective_action == "Anonymous post"   ~ 3,
+      divergence == "DIVERGED" & effective_action == "Personal post"    ~ 2,
+      divergence == "DIVERGED" & effective_action == "Side huddle only" ~ 1,
+      TRUE ~ 0
+    )),
+    max_weight           = max(case_when(
+      divergence == "DIVERGED" & effective_action == "Anonymous post"   ~ 3L,
+      divergence == "DIVERGED" & effective_action == "Personal post"    ~ 2L,
+      divergence == "DIVERGED" & effective_action == "Side huddle only" ~ 1L,
+      TRUE ~ 0L
+    )),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    compliance_violation = case_when(
+      max_weight == 3 ~ "High",
+      max_weight == 2 ~ "Medium",
+      max_weight == 1 ~ "Low",
+      TRUE            ~ "None"
+    ),
+    consistency_score = round(consistent_rounds / total_active_rounds, 2)
+  ) %>%
+  select(
+    Agent                  = agent_label,
+    `Mismatch Count`       = mismatch_count,
+    `Compliance Violation` = compliance_violation,
+    `Risk Score`           = risk_score,
+    `Consistency Score`    = consistency_score
+  ) %>%
+  arrange(desc(`Risk Score`))
+
+# ── Per-round violation score for behaviour scores heatmap ───
+score_tbl <- action_final_tbl %>%
+  mutate(
+    violation_score = case_when(
+      divergence == "DIVERGED" & effective_action == "Anonymous post"   ~ 3L,
+      divergence == "DIVERGED" & effective_action == "Personal post"    ~ 2L,
+      divergence == "DIVERGED" & effective_action == "Side huddle only" ~ 1L,
+      TRUE ~ 0L
+    ),
+    score_label = case_when(
+      violation_score == 3 ~ "High (3)",
+      violation_score == 2 ~ "Medium (2)",
+      violation_score == 1 ~ "Low (1)",
+      TRUE                 ~ "Consistent (0)"
+    ),
+    score_label = factor(score_label,
+                         levels = c("Consistent (0)", "Low (1)",
+                                    "Medium (2)", "High (3)"))
+  )
+
 # ── Helper: build heatmap ggplot ─────────────────────────────
 build_heatmap <- function(data, highlight_anomalies = TRUE) {
   n_agents <- length(unique(data$agent_label))
@@ -240,6 +306,76 @@ build_heatmap <- function(data, highlight_anomalies = TRUE) {
     )
 }
 
+
+# ── Helper: build behaviour scores heatmap ───────────────────
+build_score_heatmap <- function(data) {
+  score_colours <- c(
+    "Consistent (0)" = "#E8F5E9",
+    "Low (1)"        = "#FFF176",
+    "Medium (2)"     = "#FF8A65",
+    "High (3)"       = "#C62828"
+  )
+  
+  score_data <- score_tbl %>%
+    filter(
+      agent_label %in% unique(data$agent_label),
+      round_label %in% levels(data$round_label)
+    ) %>%
+    mutate(round_label = factor(round_label, levels = levels(data$round_label)))
+  
+  n_agents <- length(unique(score_data$agent_label))
+  
+  embargo_idx <- which(
+    levels(action_final_tbl$round_label) == format(embargo_date, "%b %d %H:%M")
+  )
+  
+  pl <- period_labels %>%
+    filter(round_label %in% levels(data$round_label)) %>%
+    mutate(y_pos = n_agents + 0.7)
+  
+  p <- ggplot(score_data,
+              aes(x = round_label, y = agent_label, fill = score_label)) +
+    geom_tile(colour = "white", linewidth = 0.5)
+  
+  if (length(embargo_idx) > 0) {
+    p <- p +
+      geom_vline(xintercept = embargo_idx, colour = "#B71C1C",
+                 linewidth = 1.2, linetype = "solid") +
+      annotate("text", x = embargo_idx + 0.15, y = 2.0,
+               label = "Embargo declared", colour = "#B71C1C",
+               size = 3, hjust = 0, fontface = "italic")
+  }
+  
+  p +
+    geom_text(
+      data        = pl,
+      aes(x = round_label, y = y_pos, label = period, colour = colour),
+      hjust       = 0, size = 3.5, fontface = "bold", inherit.aes = FALSE
+    ) +
+    scale_fill_manual(values = score_colours, name = "Violation Severity",
+                      drop = FALSE) +
+    scale_colour_identity() +
+    scale_y_discrete(expand = expansion(add = c(0.5, 1.2))) +
+    labs(
+      title    = "Per-round violation severity — Behaviour Scores Heatmap",
+      subtitle = paste0(
+        "Fill = mismatch violation weight when declared MONITORING but posted.\n",
+        "Green = consistent behaviour.  Yellow = Low (side huddle).  ",
+        "Orange = Medium (personal post).  Red = High (anonymous post).\n",
+        "Red vertical line = embargo declared (May 23)."
+      ),
+      x = NULL, y = NULL
+    ) +
+    theme_minimal(base_size = 11) +
+    theme(
+      axis.text.x     = element_text(angle = 45, hjust = 1, size = 8),
+      axis.text.y     = element_text(size = 10),
+      legend.position = "bottom",
+      plot.title      = element_text(size = 13, face = "bold"),
+      plot.subtitle   = element_text(size = 9, colour = "grey40"),
+      panel.grid      = element_blank()
+    )
+}
 
 # ── UI ──────────────────────────────────────────────────────
 swimlaneUI <- function(id) {
@@ -333,16 +469,22 @@ swimlaneUI <- function(id) {
         nav_panel(
           "Behaviour Scores",
           card_body(
-            # ── TODO: Line chart of behaviour consistency scores over time ──
-            plotOutput(ns("behaviour_plot"), height = "500px")
+            plotOutput(ns("score_heatmap"), height = "500px")
           )
         ),
         
         nav_panel(
           "Risk Rankings",
           card_body(
-            # ── TODO: Replace with actual agent risk rankings ──
-            tableOutput(ns("risk_table"))
+            tags$style(HTML("
+              .risk-table thead tr th {
+                background-color: #1565C0 !important;
+                color: white;
+                font-size: 12px;
+              }
+              .risk-table tbody tr:hover { background-color: #e3f2fd !important; }
+            ")),
+            DTOutput(ns("risk_table"))
           )
         )
       )
@@ -384,26 +526,67 @@ swimlaneServer <- function(id) {
       build_heatmap(filtered_data(), highlight_anomalies = input$highlight_anomalies)
     }, height = 500)
     
-    # ── Behaviour Consistency Plot ────────────────────────
-    output$behaviour_plot <- renderPlot({
-      # TODO: Replace with actual behaviour consistency scores
-      plot(1, type = "n",
-           main = "Behaviour Consistency Score Over Time",
-           xlab = "Time", ylab = "Score", axes = FALSE)
-      text(1, 1, "Behaviour score data will appear here", cex = 1.2, col = "grey50")
-    })
+    # ── Behaviour Scores Heatmap ──────────────────────────
+    output$score_heatmap <- renderPlot({
+      req(nrow(filtered_data()) > 0)
+      build_score_heatmap(filtered_data())
+    }, height = 500)
     
     # ── Risk Rankings Table ───────────────────────────────
-    output$risk_table <- renderTable({
-      # TODO: Replace with actual risk rankings
-      data.frame(
-        Agent                   = c("Agent A", "Agent B", "Agent C"),
-        `Risk Score`            = c(82, 65, 43),
-        `Mismatch Count`        = c(7, 4, 2),
-        `Compliance Violations` = c(3, 1, 0),
-        `Consistency Score`     = c(0.31, 0.58, 0.84),
-        check.names = FALSE
+    output$risk_table <- renderDT({
+      # Filter risk_tbl to selected agents
+      rt <- if (!is.null(input$agents) && !"All Agents" %in% input$agents) {
+        risk_tbl %>% filter(Agent %in% input$agents)
+      } else {
+        risk_tbl
+      }
+      
+      violation_colours <- c(
+        "High"   = "#FFCDD2",
+        "Medium" = "#FFE0B2",
+        "Low"    = "#FFF9C4",
+        "None"   = "#F1F8E9"
       )
+      
+      datatable(
+        rt,
+        class    = "risk-table",
+        rownames = FALSE,
+        options  = list(
+          pageLength = 20,
+          dom        = "tip",
+          order      = list(list(3, "desc")),   # sort by Risk Score desc
+          columnDefs = list(
+            list(className = "dt-center",
+                 targets   = c(1, 2, 3, 4))
+          )
+        )
+      ) %>%
+        formatStyle(
+          columns         = names(rt),
+          fontSize        = "12px"
+        ) %>%
+        formatStyle(
+          "Compliance Violation",
+          backgroundColor = styleEqual(
+            names(violation_colours),
+            unname(violation_colours)
+          )
+        ) %>%
+        formatStyle(
+          "Risk Score",
+          background = styleColorBar(rt$`Risk Score`, "#1565C0"),
+          backgroundSize   = "100% 80%",
+          backgroundRepeat = "no-repeat",
+          backgroundPosition = "center"
+        ) %>%
+        formatStyle(
+          "Consistency Score",
+          background = styleColorBar(c(0, 1), "#43A047"),
+          backgroundSize   = "100% 80%",
+          backgroundRepeat = "no-repeat",
+          backgroundPosition = "center"
+        )
     })
     
     # ── Divergence Table ──────────────────────────────────
