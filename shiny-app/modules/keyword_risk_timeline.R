@@ -117,10 +117,17 @@ build_pt_extracted <- function(periods) {
 # ── LAYER 1b: JUN 5 FORMAL SENTIMENT_AT_TURN ──────────────────────────────────
 # Shown as SEPARATE tick markers, NOT connected to the extracted line
 build_pt_formal <- function(periods) {
+  # defensive check - if risk_tbl missing Period column return NULL
+  if (!"Period" %in% names(risk_tbl) || nrow(risk_tbl) == 0) {
+    message("WARNING: risk_tbl has no Period column or is empty. Columns: ",
+            paste(names(risk_tbl), collapse=", "))
+    return(NULL)
+  }
+
   result <- risk_tbl %>%
-    filter(Period %in% periods,
-           !is.na(risk_level),
-           agent_role == "platform_trust") %>%
+    dplyr::filter(Period %in% periods,
+                  !is.na(risk_level),
+                  agent_role == "platform_trust") %>%
     mutate(
       risk_score = case_when(
         risk_level == "CRITICAL" ~ 8,
@@ -148,9 +155,10 @@ build_pt_formal <- function(periods) {
 
 # ── LAYER 2: WARNING SIGNALS ───────────────────────────────────────────────────
 build_warnings <- function(periods, seeds, mode, threshold) {
+  if (!"Period" %in% names(all_messages) || nrow(all_messages) == 0) return(NULL)
   msgs <- all_messages %>%
-    filter(Period %in% periods,
-           !is.na(deliberating), deliberating != "")
+    dplyr::filter(Period %in% periods,
+                  !is.na(deliberating), deliberating != "")
   if (nrow(msgs) == 0) return(NULL)
 
   if (mode == "cosine" && length(seeds) > 0) {
@@ -196,7 +204,7 @@ build_warnings <- function(periods, seeds, mode, threshold) {
   }
 
   result <- msgs %>%
-    filter(str_detect(str_to_lower(deliberating), warn_pattern)) %>%
+    dplyr::filter(str_detect(str_to_lower(deliberating), warn_pattern)) %>%
     mutate(
       matched_word = str_extract(str_to_lower(deliberating), warn_pattern),
       n_hits       = str_count(str_to_lower(deliberating), warn_pattern),
@@ -216,9 +224,10 @@ build_warnings <- function(periods, seeds, mode, threshold) {
 
 # ── LAYER 3: OFF-SCRIPT POSTS ──────────────────────────────────────────────────
 build_offscript <- function(periods) {
+  if (!"Period" %in% names(all_messages) || nrow(all_messages) == 0) return(NULL)
   result <- all_messages %>%
-    filter(Period %in% periods,
-           channel %in% c("personal_post", "anonymous_post"),
+    dplyr::filter(Period %in% periods,
+                  channel %in% c("personal_post", "anonymous_post"),
            !is.na(content), content != "") %>%
     mutate(layer        = "Off-script Post",
            excerpt_full = str_trunc(content, 300),
@@ -329,7 +338,7 @@ plot_risk_timeline <- function(periods,
     xmin   = as.POSIXct(c(START_DATE, EMBARGO_DATE, LEAK_DATE)),
     xmax   = as.POSIXct(c(EMBARGO_DATE, LEAK_DATE, END_DATE)),
     fill   = c("#E3F2FD", "#FFF3E0", "#FCE4EC")
-  ) %>% filter(period %in% periods)
+  ) %>% dplyr::filter(period %in% periods)
 
   p <- ggplot()
 

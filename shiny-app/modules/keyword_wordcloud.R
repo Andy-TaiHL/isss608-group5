@@ -35,14 +35,14 @@ get_cosine_freq <- function(msgs, seeds, threshold) {
   if (nrow(msgs) == 0 || length(seeds) == 0) return(NULL)
 
   corpus <- msgs %>%
-    filter(!is.na(content), content != "") %>%
+    dplyr::filter(!is.na(content), content != "") %>%
     mutate(
       doc_id  = as.character(row_number()),
       content = str_to_lower(content) %>%
         str_replace_all("[^a-z\\s]", " ") %>%
         str_squish()
     ) %>%
-    filter(content != "") %>%
+    dplyr::filter(content != "") %>%
     select(doc_id, content) %>%
     deframe()
 
@@ -70,7 +70,7 @@ get_cosine_freq <- function(msgs, seeds, threshold) {
     sv  <- tdm[seed, , drop = FALSE]
     sim <- sim2(tdm, sv, method = "cosine", norm = "l2")
     tibble(word = rownames(sim), sim = as.numeric(sim)) %>%
-      filter(word != seed,
+      dplyr::filter(word != seed,
              !word %in% seeds,
              !word %in% EXTRA_STOPS,
              sim > threshold) %>%
@@ -83,7 +83,7 @@ get_cosine_freq <- function(msgs, seeds, threshold) {
 
   msgs %>%
     unnest_tokens(word, content) %>%
-    filter(word %in% seed_vocab) %>%
+    dplyr::filter(word %in% seed_vocab) %>%
     count(word, sort = TRUE) %>%
     rename(freq = n)
 }
@@ -105,7 +105,7 @@ plot_wordcloud <- function(msgs,
     # Simple frequency: all non-stopword tokens, no seed filtering
     freq <- msgs %>%
       unnest_tokens(word, content) %>%
-      filter(!word %in% EXTRA_STOPS, nchar(word) > 2) %>%
+      dplyr::filter(!word %in% EXTRA_STOPS, nchar(word) > 2) %>%
       count(word, sort = TRUE) %>%
       rename(freq = n) %>%
       slice_max(freq, n = 80)

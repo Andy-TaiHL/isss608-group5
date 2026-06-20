@@ -331,16 +331,21 @@ keywordServer <- function(id) {
       tbl <- tbl_data()
       if (is.null(tbl) || nrow(tbl) == 0) return(NULL)
 
+      # safely add Date_sort if missing
+      if (!"Date_sort" %in% names(tbl)) {
+        tbl <- tbl %>% mutate(Date_sort = as.POSIXct(Date, format="%d %b %Y %H:%M"))
+      }
+
       # apply layer filter
       tbl <- tbl %>% filter(Layer %in% input$tbl_layer)
 
-      # apply risk band filter (only relevant for PT Risk Score rows)
+      # apply risk band filter
       tbl <- tbl %>%
         filter(Layer != "PT Risk Score" | risk_band %in% input$tbl_risk)
 
       if (nrow(tbl) == 0) return(NULL)
 
-      # apply sort using Date_sort (POSIXct) not Date (string)
+      # sort using Date_sort (POSIXct)
       tbl <- switch(input$tbl_sort,
         date_desc = tbl %>% arrange(desc(Date_sort)),
         date_asc  = tbl %>% arrange(Date_sort),
@@ -357,14 +362,14 @@ keywordServer <- function(id) {
 
       # remove Date_sort before display
       tbl <- tbl %>% select(-Date_sort)
+
       # colour mapping
       bg_vals <- c(CRITICAL="#fee2e2", HIGH="#fecaca",
                    MODERATE="#fef3c7", LOW="#dcfce7", NONE="#ffffff")
       fg_vals <- c(CRITICAL="#7f1d1d", HIGH="#b91c1c",
                    MODERATE="#b45309", LOW="#15803d", NONE="#1e293b")
 
-      # map each row's risk_band to its colour
-      # keep risk_band for styling, put it as last column then hide it
+      # keep risk_band as last column for styling then hide it
       tbl_display <- tbl %>% select(-risk_band) %>%
         mutate(risk_band = tbl$risk_band)
 
@@ -377,15 +382,10 @@ keywordServer <- function(id) {
           scrollX    = TRUE,
           dom        = "tip",
           columnDefs = list(
-            list(width="30%", targets=6),   # Excerpt
-            list(width="13%", targets=0),   # Date
-            list(width="10%", targets=2),   # Layer
-            list(visible=FALSE, targets=7)  # hide risk_band col
-          ),
-          initComplete = JS(
-            "function(settings, json) {",
-            "$(this.api().table().header()).css({'background-color':'#f8fafc','color':'#1e293b'});",
-            "}"
+            list(width="30%", targets=6),
+            list(width="13%", targets=0),
+            list(width="10%", targets=2),
+            list(visible=FALSE, targets=7)
           )
         ),
         class = "compact"

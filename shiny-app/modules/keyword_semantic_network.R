@@ -63,14 +63,14 @@ plot_network <- function(msgs,
 
   # Build corpus
   corpus <- msgs %>%
-    filter(!is.na(content), content != "") %>%
+    dplyr::filter(!is.na(content), content != "") %>%
     mutate(
       doc_id  = as.character(row_number()),
       content = str_to_lower(content) %>%
         str_replace_all("[^a-z\\s]", " ") %>%
         str_squish()
     ) %>%
-    filter(content != "") %>%
+    dplyr::filter(content != "") %>%
     select(doc_id, content) %>%
     deframe()
 
@@ -108,7 +108,7 @@ plot_network <- function(msgs,
       to     = rownames(sim),
       weight = as.numeric(sim)
     ) %>%
-      filter(
+      dplyr::filter(
         to != seed,
         !to %in% seeds,
         !to %in% EXTRA_STOPS,

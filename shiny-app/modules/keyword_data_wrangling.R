@@ -88,7 +88,7 @@ all_messages <- map_dfr(raw$rounds, function(r) {
   })
 }) %>%
   mutate(Period = assign_period(timestamp)) %>%
-  filter(!is.na(Period))  # drop anything outside simulation window
+  dplyr::filter(!is.na(Period))  # drop anything outside simulation window
 
 # ── RISK TABLE ─────────────────────────────────────────────────────────────────
 # Participant-level data: declared_action + sentiment_at_turn per agent per round
@@ -125,7 +125,7 @@ risk_tbl <- map_dfr(raw$rounds, function(r) {
       TRUE                     ~ NA_real_
     )
   ) %>%
-  filter(!is.na(Period))
+  dplyr::filter(!is.na(Period))
 
 # ── FILTER HELPER ──────────────────────────────────────────────────────────────
 # Returns filtered all_messages for given periods / channels / internal states.
@@ -141,7 +141,7 @@ filter_msgs <- function(periods,
   keep_ch <- unlist(ch_map[channels])
 
   base <- all_messages %>%
-    filter(Period %in% periods,
+    dplyr::filter(Period %in% periods,
            channel %in% keep_ch,
            !is.na(content), content != "")
 
@@ -149,9 +149,9 @@ filter_msgs <- function(periods,
 
   int_rows <- map_dfr(int_states, function(s) {
     all_messages %>%
-      filter(Period %in% periods) %>%
+      dplyr::filter(Period %in% periods) %>%
       mutate(content = .data[[s]]) %>%
-      filter(!is.na(content), content != "") %>%
+      dplyr::filter(!is.na(content), content != "") %>%
       mutate(channel = paste0("internal_", s))  # tag so table shows source
   })
 
