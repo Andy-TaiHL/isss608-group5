@@ -12,18 +12,16 @@
 #   - Compliance Violations
 # ============================================================
 
-pacman::p_load(
-  tidyverse, patchwork, ggrepel, ggiraph, DT,
-  gifski, plotly, gganimate, ggpp, ggtext, ggdist, ggridges,
-  colorspace, geomtextpath, nord, nortest, seriation, dendextend,
-  heatmaply, ggstatsplot, jsonlite, janitor, listviewer, gt,
-  lubridate, scales, tidytext, proxy, cluster, wordcloud2,
-  htmlwidgets, ggwordcloud, stringr, DiagrammeR, tidygraph,
-  ggraph, igraph, kableExtra, widyr, text2vec
-)
-
 library(shiny)
 library(bslib)
+library(dplyr)
+library(purrr)
+library(ggplot2)
+library(stringr)
+library(tibble)
+library(lubridate)
+library(jsonlite)
+library(DT)
 
 # ── Global: Data Loading (runs once on app start) ────────────
 # Embargo was declared on May 23, 2046
