@@ -37,11 +37,6 @@ ui <- page_navbar(
     .dataTable tbody tr:nth-child(odd) { background:#f8fafc !important; }
     .dataTable tbody td { color:#1e293b !important; border-color:#e2e8f0 !important; }
     .dataTables_wrapper { color:#1e293b !important; }
-    /* Centrality table: ID-based rules beat class-based !important rules */
-    #network-centrality_table tbody td {
-      color: inherit !important;
-      background-color: inherit !important;
-    }
     .dataTables_info, .dataTables_paginate { color:#64748b !important; }
     .paginate_button,
     .paginate_button.previous,
@@ -98,9 +93,9 @@ ui <- page_navbar(
                                           color:white !important; }
     select, select option { background:white !important; color:#1e293b !important; }
   ")),
-                     tags$script(HTML("
+    tags$script(HTML("
       // Fix DT pagination after every table draw
-      $(document).on('draw.dt', function(e) {
+      $(document).on('draw.dt', function() {
         var pag = $('.dataTables_paginate');
         pag.css('background','white');
         pag.find('.paginate_button').css({
@@ -118,17 +113,14 @@ ui <- page_navbar(
           'color':'#94a3b8'
         });
         $('.dataTables_info').css({'background':'white','color':'#64748b'});
-        // Fix table body — skip centrality table which uses custom cell coloring
-        if (e.target.id !== 'network-centrality_table') {
-          var $tbl = $(e.target);
-          $tbl.find('tbody tr').css('background','white');
-          $tbl.find('tbody tr:nth-child(odd)').css('background','#f8fafc');
-          $tbl.find('tbody td').css({'color':'#1e293b','background-color':''});
-        }
+        // Fix table body
+        $('.dataTable tbody tr').css('background','white');
+        $('.dataTable tbody tr:nth-child(odd)').css('background','#f8fafc');
+        $('.dataTable tbody td').css('color','#1e293b');
       });
     "))
   ),
-  
+
   # ── Tab 1: Overview ───────────────────────────────────────
   nav_panel(
     title = "Overview",
@@ -188,21 +180,21 @@ ui <- page_navbar(
       )
     )
   ),
-  
+
   # ── Tab 2: Network Analysis (Andy) ────────────────────────
   nav_panel(
     title = "Network Analysis",
     icon = icon("circle-nodes"),
     networkUI("network")
   ),
-  
+
   # ── Tab 3: Keyword Analysis (Fangyu) ──────────────────────
   nav_panel(
     title = "Keyword Analysis",
     icon = icon("cloud"),
     keywordUI("keyword")
   ),
-  
+
   # ── Tab 4: Swimlane Plot (Yuxi) ───────────────────────────
   nav_panel(
     title = "Swimlane Plot",
@@ -213,12 +205,12 @@ ui <- page_navbar(
 
 # ── Server ──────────────────────────────────────────────────
 server <- function(input, output, session) {
-  
+
   # Overview navigation buttons
   observeEvent(input$go_network,  nav_select("navbar", "Network Analysis"))
   observeEvent(input$go_keyword,  nav_select("navbar", "Keyword Analysis"))
   observeEvent(input$go_swimlane, nav_select("navbar", "Swimlane Plot"))
-  
+
   # Load module servers
   networkServer("network")
   keywordServer("keyword")
