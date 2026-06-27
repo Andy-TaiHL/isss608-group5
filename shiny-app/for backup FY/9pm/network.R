@@ -1,6 +1,6 @@
 # ============================================================
 # Network Analysis Module (Base R version - no tidyverse)
-# Author: Fang Yu
+# Author: FY
 # ============================================================
 
 library(shiny)
@@ -226,21 +226,6 @@ networkUI <- function(id) {
     tags$style(HTML("
       .nav-tabs .nav-link.active { background-color: #163D77 !important; color: white !important; }
       .nav-tabs .nav-link        { color: #2F80ED !important; }
-      /* Hide sidebar and its toggle arrow on Pre vs Post Embargo tab */
-      body.pp-tab-active .bslib-sidebar-layout > .sidebar,
-      body.pp-tab-active .bslib-sidebar-toggle,
-      body.pp-tab-active .collapse-toggle,
-      body.pp-tab-active .sidebar-toggle,
-      body.pp-tab-active button[aria-label*='sidebar'],
-      body.pp-tab-active button[aria-label*='Sidebar'],
-      body.pp-tab-active button[aria-label*='collapse'],
-      body.pp-tab-active button[aria-label*='Collapse'] {
-        display: none !important;
-      }
-      body.pp-tab-active .bslib-sidebar-layout > .main {
-        grid-column: 1 / -1 !important;
-        max-width: 100% !important;
-      }
       /* visNetwork dropdowns side by side */
       #network-network_graph .vis-configuration-wrapper {
         display: flex !important;
@@ -289,45 +274,11 @@ networkUI <- function(id) {
         padding: 6px 10px !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
       }
-      /* Centrality table: uniform 12px Inter, compact padding, no-wrap agent column */
-      #network-centrality_table_wrapper,
-      #network-centrality_table_wrapper * {
-        font-size: 12px !important;
-        font-family: Inter, sans-serif !important;
-      }
-      #network-centrality_table td,
-      #network-centrality_table th { padding: 4px 8px !important; }
-      #network-centrality_table th { padding-right: 20px !important; }
-      #network-centrality_table th.sorting::before,
-      #network-centrality_table th.sorting::after,
-      #network-centrality_table th.sorting_asc::before,
-      #network-centrality_table th.sorting_asc::after,
-      #network-centrality_table th.sorting_desc::before,
-      #network-centrality_table th.sorting_desc::after {
-        font-size: 9px !important;
-        line-height: 1 !important;
-      }
-      #network-centrality_table td:first-child { white-space: nowrap !important; }
     ")),
     
     # MutationObserver watching document.body (not the vis container, which may not
     # exist yet at ready time) — forces dark tooltip style via setProperty('important')
     tags$script(HTML("
-      // Register BEFORE document.ready so Shiny message is never missed
-      Shiny.addCustomMessageHandler('toggleSidebar', function(msg) {
-        if (msg.collapse) {
-          document.body.classList.add('pp-tab-active');
-        } else {
-          document.body.classList.remove('pp-tab-active');
-        }
-        // Directly hide/show any toggle button regardless of bslib version
-        ['.bslib-sidebar-toggle','.collapse-toggle','.sidebar-toggle'].forEach(function(sel) {
-          document.querySelectorAll(sel).forEach(function(el) {
-            el.style.display = msg.collapse ? 'none' : '';
-          });
-        });
-      });
-
       $(document).ready(function() {
         var observer = new MutationObserver(function(mutations) {
           mutations.forEach(function(m) {
@@ -349,7 +300,7 @@ networkUI <- function(id) {
     ")),
     
     navset_tab(
-      id = ns("main_tabs"),
+      
       nav_panel(
         "Network Graph",
         div(style = "display:flex; gap:0; align-items:flex-start; padding:8px 0;
@@ -386,78 +337,18 @@ networkUI <- function(id) {
       
       nav_panel(
         "Pre vs Post Embargo",
-        
-        # ── Agent Type selector (inline — only control that affects this tab) ──
-        div(style="display:flex; align-items:center; gap:12px; margin-bottom:10px; margin-top:8px;",
-            tags$label("Agent Type:",
-                       style="color:#BFC7D5;font-size:12px;font-family:Inter,sans-serif;
-                   font-weight:600;white-space:nowrap;margin:0;"),
-            selectInput(ns("pp_agent_type"), NULL,
-                        choices  = c("All", unique(communications_tbl$agent_role)),
-                        selected = "All", width = "180px")
-        ),
-        
-        # ── KPI Cards ────────────────────────────────────────────────
-        uiOutput(ns("pp_kpis")),
-        
-        # ── Networks (left 2/3) + Observations (right 1/3) ───────────
-        div(style = "display:flex; gap:12px; margin-top:10px; align-items:flex-start;",
-            
-            # PRE network
-            div(style = "flex:1; min-width:0;",
-                tags$p("PRE  (Before 23 May 2046)",
-                       style = "color:#56CCF2; font-size:11px; font-family:Inter,sans-serif;
-                       font-weight:700; text-align:center; margin:0 0 3px 0;"),
-                div(style = "width:100%; height:260px; overflow:hidden; pointer-events:auto;",
-                    visNetworkOutput(ns("pp_pre_net"), height = "260px")
-                )
-            ),
-            
-            # POST network
-            div(style = "flex:1; min-width:0;",
-                tags$p("POST  (After 23 May 2046)",
-                       style = "color:#F2994A; font-size:11px; font-family:Inter,sans-serif;
-                       font-weight:700; text-align:center; margin:0 0 3px 0;"),
-                div(style = "width:100%; height:260px; overflow:hidden; pointer-events:auto;",
-                    visNetworkOutput(ns("pp_post_net"), height = "260px")
-                )
-            ),
-            
-            # Observations
-            div(style = "flex:1; min-width:0;",
-                tags$p("Overall Observations",
-                       style = "color:white; font-size:12px; font-family:Inter,sans-serif;
-                       font-weight:600; margin:0 0 6px 0;"),
-                uiOutput(ns("pp_observations"))
-            )
-        )
+        h3("Pre vs Post Embargo Comparison"),
+        p("This panel can be used to compare network structure before and after the embargo declaration.")
       ),
       
       nav_panel(
         "Centrality Table",
-        
-        div(style = "display:flex; gap:16px; align-items:flex-start; padding:4px 0;
-                     overflow:hidden;",
-            
-            # Left column: KPI cards + centrality table
-            div(style = "flex:1 1 0; min-width:0; overflow:hidden;",
-                uiOutput(ns("kpi_cards")),
-                div(style = "margin-top:10px;",
-                    DTOutput(ns("centrality_table"))
-                )
-            ),
-            
-            # (divider removed)
-            
-            # Right column: supporting records starting from top
-            div(style = "flex:1 1 0; min-width:0; overflow:hidden;",
-                tags$p("Supporting Communication Records",
-                       style = "font-size:14px; font-family:Inter,sans-serif; font-weight:600;
-                       color:white; margin:0 0 4px 0;"),
-                uiOutput(ns("supporting_label")),
-                DTOutput(ns("supporting_records"))
-            )
-        )
+        h3("Centrality Table"),
+        DTOutput(ns("centrality_table")),
+        br(),
+        h4("Supporting Communication Records"),
+        p("These records show the communication links used to calculate the selected network metrics."),
+        DTOutput(ns("supporting_records"))
       )
     )
   )
@@ -630,42 +521,6 @@ networkServer <- function(id) {
         )
     })
     
-    # KPI cards: top agent per centrality metric
-    output$kpi_cards <- renderUI({
-      metrics <- filtered_metrics()
-      if (nrow(metrics) == 0) return(NULL)
-      
-      metric_cols  <- c("Betweenness", "Degree", "Closeness", "Eigenvector")
-      metric_color <- c("#56CCF2", "#2F80ED", "#F2994A", "#27AE60")
-      
-      cards <- lapply(seq_along(metric_cols), function(i) {
-        m         <- metric_cols[i]
-        top_idx   <- which.max(metrics[[m]])
-        top_agent <- gsub("-Agent$", "", metrics$Agent[top_idx])
-        top_val   <- metrics[[m]][top_idx]
-        
-        div(style = paste0(
-          "flex:1; background:#0f1f3d; border-top: 3px solid ", metric_color[i], ";",
-          "border-left:1px solid #1e3a5f; border-right:1px solid #1e3a5f;",
-          "border-bottom:1px solid #1e3a5f; border-radius:0 0 6px 6px;",
-          "padding:10px 14px; min-width:0;"
-        ),
-        tags$p(m,
-               style = paste0("color:", metric_color[i], "; font-size:10px;",
-                              "font-family:Inter,sans-serif; font-weight:700; margin:0 0 4px 0;",
-                              "text-transform:uppercase; letter-spacing:0.08em;")),
-        tags$p(top_agent,
-               style = "color:white; font-size:13px; font-family:Inter,sans-serif;
-                     font-weight:700; margin:0 0 3px 0; line-height:1.3;"),
-        tags$p(paste("Score:", top_val),
-               style = "color:#BFC7D5; font-size:11px; font-family:Inter,sans-serif; margin:0;")
-        )
-      })
-      
-      div(style = "display:flex; gap:8px; margin-bottom:4px;",
-          cards[[1]], cards[[2]], cards[[3]], cards[[4]])
-    })
-    
     output$centrality_table <- renderDT({
       
       metric     <- input$centrality_metric
@@ -675,8 +530,6 @@ networkServer <- function(id) {
       n_top <- min(3, nrow(table_data))
       table_data$Rank <- seq_len(nrow(table_data))
       table_data$Top  <- ifelse(table_data$Rank <= n_top, "Top Agent", "Other")
-      # strip -Agent suffix for cleaner display
-      table_data$Agent <- gsub("-Agent$", "", table_data$Agent)
       
       # 0-based column index for JS (Agent=0, Betweenness=1, Degree=2, Closeness=3, Eigenvector=4)
       metric_col_idx <- which(names(table_data) == metric) - 1L
@@ -689,13 +542,6 @@ networkServer <- function(id) {
           var api = this.api();
           var colIdx = %d;
           setTimeout(function() {
-            // force 8.5px font on all cells, headers, pagination, and info
-            var wrapper = api.table().container();
-            var allEls = wrapper.querySelectorAll('*');
-            allEls.forEach(function(el) {
-              el.style.setProperty('font-size', '12px', 'important');
-              el.style.setProperty('font-family', 'Inter, sans-serif', 'important');
-            });
             // reset metric column to normal first
             api.column(colIdx).nodes().each(function(cell) {
               cell.style.setProperty('background-color', 'transparent', 'important');
@@ -715,20 +561,11 @@ networkServer <- function(id) {
       
       datatable(
         table_data,
-        rownames  = FALSE,
-        selection = "single",
-        options   = list(
-          pageLength   = 10,
-          dom          = "tip",
-          autoWidth    = FALSE,
-          columnDefs   = list(
-            list(visible = FALSE, targets = c("Rank", "Top")),
-            list(width = "30%", targets = 0),
-            list(width = "18%", targets = 1),
-            list(width = "14%", targets = 2),
-            list(width = "18%", targets = 3),
-            list(width = "18%", targets = 4)
-          ),
+        rownames = FALSE,
+        options = list(
+          pageLength  = 10,
+          dom         = "tip",
+          columnDefs  = list(list(visible = FALSE, targets = c("Rank", "Top"))),
           drawCallback = JS(draw_js)
         )
       )
@@ -791,260 +628,28 @@ networkServer <- function(id) {
       )
     })
     
-    output$supporting_label <- renderUI({
-      metrics <- filtered_metrics()
-      sel_row <- input$centrality_table_rows_selected
-      
-      if (length(sel_row) > 0 && nrow(metrics) >= sel_row) {
-        agent <- metrics$Agent[sel_row]
-        tags$p(
-          paste0("Showing communications involving ", agent,
-                 " — click a different row to change."),
-          style = "font-size:12px; font-family:Inter,sans-serif; color:#56CCF2; margin-bottom:6px;"
-        )
-      } else {
-        top_agent <- metrics$Agent[1]
-        tags$p(
-          paste0("Showing communications for top agent: ", top_agent,
-                 " — click any row in the table on the left to filter by that agent."),
-          style = "font-size:12px; font-family:Inter,sans-serif; color:#BFC7D5; margin-bottom:6px;"
-        )
-      }
-    })
-    
     output$supporting_records <- renderDT({
-      metrics <- filtered_metrics()
-      sel_row <- input$centrality_table_rows_selected
-      
-      # use clicked agent, or default to top agent by selected metric
-      if (length(sel_row) > 0 && nrow(metrics) >= sel_row) {
-        selected_agent <- metrics$Agent[sel_row]
-      } else {
-        selected_agent <- metrics$Agent[1]
-      }
       
       records <- filtered_edges()
-      records <- records[records$from == selected_agent | records$to == selected_agent, ]
       records <- records[order(-as.numeric(records$timestamp)), ]
-      
       records <- data.frame(
-        Timestamp    = format(as.POSIXct(records$timestamp, tz = "UTC"), "%Y-%m-%d %H:%M"),
-        From         = records$from,
-        To           = records$to,
-        Channel      = records$channel,
+        Timestamp = records$timestamp,
+        From = records$from,
+        To = records$to,
+        Channel = records$channel,
         `Message Type` = records$message_type,
-        check.names  = FALSE
+        check.names = FALSE
       )
-      
-      font_js <- "
-        function() {
-          var wrapper = this.api().table().container();
-          wrapper.querySelectorAll('*').forEach(function(el) {
-            el.style.setProperty('font-size', '12px', 'important');
-            el.style.setProperty('font-family', 'Inter, sans-serif', 'important');
-          });
-        }
-      "
       
       datatable(
         records,
         rownames = FALSE,
-        options  = list(
-          pageLength   = 7,
-          dom          = "tip",
-          drawCallback = JS(font_js)
+        options = list(
+          pageLength = 10,
+          scrollX = TRUE,
+          dom = "tip"
         )
       )
     })
-    # Auto-collapse sidebar on Pre vs Post tab, restore on others
-    observeEvent(input$main_tabs, {
-      if (isTRUE(input$main_tabs == "Pre vs Post Embargo")) {
-        session$sendCustomMessage("toggleSidebar", list(collapse = TRUE))
-      } else {
-        session$sendCustomMessage("toggleSidebar", list(collapse = FALSE))
-      }
-    }, ignoreInit = TRUE)
-    
-    # base_edges: applies Timeline Range + pp_agent_type (inline control) but NOT Time Period
-    base_edges <- reactive({
-      edge_data <- reply_edges
-      edge_data <- edge_data[
-        edge_data$date >= input$timeline_range[1] &
-          edge_data$date <= input$timeline_range[2], ]
-      if (!is.null(input$pp_agent_type) && input$pp_agent_type != "All") {
-        selected_agents <- unique(
-          communications_tbl$agent_label[communications_tbl$agent_role == input$pp_agent_type])
-        edge_data <- edge_data[
-          edge_data$from %in% selected_agents | edge_data$to %in% selected_agents, ]
-      }
-      edge_data
-    })
-    
-    # ── PRE vs POST EMBARGO ────────────────────────────────────────────
-    
-    EMBARGO_DATE <- as.Date("2046-05-23")
-    
-    pre_edges_data <- reactive({
-      e <- base_edges()
-      e[!is.na(e$date) & e$date < EMBARGO_DATE, ]
-    })
-    
-    post_edges_data <- reactive({
-      e <- base_edges()
-      e[!is.na(e$date) & e$date >= EMBARGO_DATE, ]
-    })
-    
-    compute_net_kpis <- function(edge_data) {
-      if (is.null(edge_data) || nrow(edge_data) == 0)
-        return(list(agents=0, messages=0, density=0, avg_deg=0))
-      net_e <- aggregate(list(w=rep(1,nrow(edge_data))),
-                         by=list(from=edge_data$from, to=edge_data$to), FUN=sum)
-      net_e <- net_e[net_e$from != net_e$to, ]
-      if (nrow(net_e)==0)
-        return(list(agents=0, messages=nrow(edge_data), density=0, avg_deg=0))
-      nodes <- unique(c(net_e$from, net_e$to))
-      g <- graph_from_data_frame(net_e, vertices=data.frame(name=nodes), directed=TRUE)
-      list(agents=vcount(g), messages=nrow(edge_data),
-           density=round(edge_density(g),2), avg_deg=round(mean(degree(g,mode="all")),1))
-    }
-    
-    pp_kpi_card <- function(label, pre, post) {
-      delta <- post - pre
-      # when PRE=0, show "NEW" instead of NA%
-      if (pre == 0 && post > 0) {
-        ptxt <- "\u25b2 NEW"; acol <- "#27AE60"
-      } else if (pre == 0 && post == 0) {
-        ptxt <- "\u2500"; acol <- "#BFC7D5"
-      } else {
-        pct  <- round(abs(delta)/pre*100)
-        arrow <- if (delta>0) "\u25b2" else if (delta<0) "\u25bc" else "\u2500"
-        acol  <- if (delta>0) "#27AE60" else if (delta<0) "#E74C3C" else "#BFC7D5"
-        ptxt  <- paste0(arrow," ",pct,"%")
-      }
-      div(style="flex:1;background:#0f1f3d;border:1px solid #1e3a5f;border-radius:6px;padding:8px 12px;",
-          tags$p(label, style="color:#56CCF2;font-size:9px;font-family:Inter,sans-serif;
-                              font-weight:700;text-transform:uppercase;letter-spacing:0.06em;
-                              margin:0 0 6px 0;text-align:center;"),
-          div(style="display:flex;justify-content:space-around;align-items:center;",
-              div(style="text-align:center;",
-                  tags$p("PRE",style="color:#BFC7D5;font-size:9px;font-family:Inter,sans-serif;margin:0;"),
-                  tags$p(as.character(pre),style="color:white;font-size:16px;font-family:Inter,sans-serif;font-weight:700;margin:0;")),
-              tags$p(ptxt,style=paste0("color:",acol,";font-size:12px;font-family:Inter,sans-serif;font-weight:700;margin:0;")),
-              div(style="text-align:center;",
-                  tags$p("POST",style="color:#BFC7D5;font-size:9px;font-family:Inter,sans-serif;margin:0;"),
-                  tags$p(as.character(post),style="color:white;font-size:16px;font-family:Inter,sans-serif;font-weight:700;margin:0;"))
-          )
-      )
-    }
-    
-    output$pp_kpis <- renderUI({
-      pre  <- compute_net_kpis(pre_edges_data())
-      post <- compute_net_kpis(post_edges_data())
-      div(style="display:flex;gap:10px;",
-          pp_kpi_card("Active Agents",   pre$agents,   post$agents),
-          pp_kpi_card("Total Messages",  pre$messages, post$messages),
-          pp_kpi_card("Network Density", pre$density,  post$density),
-          pp_kpi_card("Avg Degree",      pre$avg_deg,  post$avg_deg)
-      )
-    })
-    
-    make_pp_net <- function(edge_data, node_color) {
-      if (is.null(edge_data) || nrow(edge_data) == 0)
-        return(visNetwork(nodes=data.frame(id=1,label="No data"),
-                          edges=data.frame(), background="#0a1628"))
-      net_e <- aggregate(list(weight=rep(1,nrow(edge_data))),
-                         by=list(from=edge_data$from,to=edge_data$to), FUN=sum)
-      net_e <- net_e[net_e$from != net_e$to, ]
-      m_data <- calculate_metrics(edge_data)
-      nodes  <- unique(c(net_e$from, net_e$to))
-      nd <- data.frame(id=nodes, label=gsub("-Agent$","",nodes), stringsAsFactors=FALSE)
-      nd <- merge(nd, m_data[,c("Agent","Degree")], by.x="id", by.y="Agent", all.x=TRUE)
-      nd$value <- nd$Degree
-      nd$color <- node_color
-      nd$title <- paste0(
-        "<div style='background:#1a2a45;color:white;padding:6px 10px;border-radius:6px;font-size:11px;'>",
-        "<b>",nd$label,"</b><br>Degree: <b>",nd$Degree,"</b></div>")
-      net_e$width <- 1+3*(net_e$weight-min(net_e$weight))/max(1,diff(range(net_e$weight)))
-      visNetwork(nodes=nd, edges=net_e, background="#0a1628") |>
-        visNodes(shape="dot", font=list(color="white",size=12), scaling=list(min=12,max=35)) |>
-        visEdges(arrows="to", color=list(color="#4A5568"),
-                 smooth=list(enabled=TRUE,type="curvedCW")) |>
-        visOptions(highlightNearest=TRUE) |>
-        visPhysics(solver="forceAtlas2Based", stabilization=TRUE) |>
-        visInteraction(tooltipDelay=80, navigationButtons=FALSE, zoomView=FALSE)
-    }
-    
-    output$pp_pre_net  <- renderVisNetwork(make_pp_net(pre_edges_data(),  "#163D77"))
-    output$pp_post_net <- renderVisNetwork(make_pp_net(post_edges_data(), "#C0410A"))
-    
-    output$pp_observations <- renderUI({
-      pre_k  <- compute_net_kpis(pre_edges_data())
-      post_k <- compute_net_kpis(post_edges_data())
-      pre_m  <- calculate_metrics(pre_edges_data())
-      post_m <- calculate_metrics(post_edges_data())
-      
-      # need at least post data to generate observations
-      if (nrow(post_m) == 0) {
-        return(div(style="background:#0f1f3d;border:1px solid #1e3a5f;border-radius:8px;padding:10px 14px;",
-                   tags$p("No post-embargo data available for the selected filters.",
-                          style="color:#BFC7D5;font-size:11px;font-family:Inter,sans-serif;margin:0;")))
-      }
-      
-      obs_item <- function(text)
-        tags$li(text, style="color:#BFC7D5;font-size:11px;font-family:Inter,sans-serif;
-                              margin-bottom:6px;line-height:1.5;")
-      
-      items <- list(
-        obs_item(paste0(
-          "Messages: ", pre_k$messages, " pre-embargo → ", post_k$messages, " post-embargo",
-          if (pre_k$messages > 0)
-            paste0(" (+", round((post_k$messages-pre_k$messages)/pre_k$messages*100), "%)")
-          else " (all activity post-embargo).")),
-        obs_item(paste0(
-          "Network density changed from ", pre_k$density, " to ", post_k$density,
-          " — agents became ",
-          if (post_k$density > pre_k$density) "more" else "less",
-          " interconnected."))
-      )
-      
-      # betweenness observations only if both pre and post have data
-      if (nrow(pre_m) > 0) {
-        merged     <- merge(pre_m, post_m, by="Agent", suffixes=c("_pre","_post"))
-        if (nrow(merged) > 0) {
-          merged$dbt <- merged$Betweenness_post - merged$Betweenness_pre
-          merged$pbt <- ifelse(merged$Betweenness_pre==0, NA,
-                               round(merged$dbt/merged$Betweenness_pre*100))
-          top_bt      <- merged[which.max(abs(merged$dbt)), ]
-          top_bt_name <- gsub("-Agent$","", top_bt$Agent)
-          items <- c(items, list(obs_item(paste0(
-            top_bt_name, " showed the largest betweenness shift (",
-            top_bt$Betweenness_pre, " → ", top_bt$Betweenness_post,
-            if (!is.na(top_bt$pbt)) paste0(", ", ifelse(top_bt$dbt>0,"+",""), top_bt$pbt, "%") else "",
-            ")."))))
-        }
-        new_agents <- gsub("-Agent$","", setdiff(post_m$Agent, pre_m$Agent))
-        if (length(new_agents) > 0)
-          items <- c(items, list(obs_item(paste0(
-            paste(new_agents, collapse=", "),
-            if (length(new_agents)==1) " was" else " were",
-            " absent pre-embargo, appearing only after the embargo."))))
-      } else {
-        new_agents <- gsub("-Agent$","", post_m$Agent)
-        items <- c(items, list(obs_item(paste0(
-          "All agents (", paste(new_agents, collapse=", "),
-          ") were only active post-embargo."))))
-      }
-      
-      top_deg_name <- gsub("-Agent$","", post_m$Agent[which.max(post_m$Degree)])
-      top_deg_val  <- max(post_m$Degree)
-      items <- c(items, list(obs_item(paste0(
-        top_deg_name, " was the most connected agent post-embargo (", top_deg_val, " connections)."))))
-      
-      div(style="background:#0f1f3d;border:1px solid #1e3a5f;border-radius:8px;
-                 padding:10px 14px; height:245px; overflow-y:auto;",
-          tags$ul(style="margin:0;padding-left:16px;", do.call(tagList, items)))
-    })
-    
-    
   })
 }
