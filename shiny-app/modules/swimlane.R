@@ -95,8 +95,8 @@ action_final_tbl <- action_tbl %>%
   mutate(
     display_action = coalesce(declared_type, effective_action),
     display_action = factor(display_action,
-      levels = c("Monitoring", "Side huddle only", "Official post",
-                 "Personal post", "Anonymous post", "Compliance warning", "Other")
+                            levels = c("Monitoring", "Side huddle only", "Official post",
+                                       "Personal post", "Anonymous post", "Compliance warning", "Other")
     ),
     divergence = case_when(
       !is.na(declared_type) &
@@ -185,8 +185,8 @@ internal_state_tbl <- messages_tbl %>%
       TRUE                                       ~ "No internal state"
     ),
     internal_label = factor(internal_label,
-      levels = c("No internal state", "Deliberating only",
-                 "Rationalizing only", "Deliberating + Rationalizing"))
+                            levels = c("No internal state", "Deliberating only",
+                                       "Rationalizing only", "Deliberating + Rationalizing"))
   ) %>%
   left_join(
     action_final_tbl %>%
@@ -302,9 +302,9 @@ add_period_bands <- function(p, data) {
     )
   for (i in seq_len(nrow(px))) {
     p <- p + annotate("rect",
-      xmin = px$xmin[i], xmax = px$xmax[i],
-      ymin = -Inf, ymax = Inf,
-      fill = px$fill[i], alpha = 0.25)
+                      xmin = px$xmin[i], xmax = px$xmax[i],
+                      ymin = -Inf, ymax = Inf,
+                      fill = px$fill[i], alpha = 0.25)
   }
   p
 }
@@ -312,19 +312,19 @@ add_period_bands <- function(p, data) {
 # ── Swimlane heatmap ─────────────────────────────────────────
 build_heatmap <- function(data, highlight_anomalies = TRUE) {
   n_agents <- length(unique(data$agent_label))
-
+  
   embargo_idx <- which(
     levels(action_final_tbl$round_label) == format(embargo_date, "%b %d %H:%M")
   )
-
+  
   p <- ggplot(data, aes(x = round_label, y = agent_label, fill = display_action)) +
     geom_tile(colour = "white", linewidth = 0.5)
-
+  
   p <- add_period_bands(p, data)
-
+  
   # re-draw tiles on top of bands
   p <- p + geom_tile(colour = "white", linewidth = 0.5)
-
+  
   if (highlight_anomalies) {
     p <- p +
       geom_tile(
@@ -333,7 +333,7 @@ build_heatmap <- function(data, highlight_anomalies = TRUE) {
         fill = NA, colour = "#B71C1C", linewidth = 1.8
       )
   }
-
+  
   if (length(embargo_idx) > 0) {
     p <- p +
       geom_vline(xintercept = embargo_idx, colour = "#B71C1C",
@@ -342,11 +342,11 @@ build_heatmap <- function(data, highlight_anomalies = TRUE) {
                label = "Embargo declared", colour = "#B71C1C",
                size = 3, hjust = 0, fontface = "italic")
   }
-
+  
   pl <- period_labels %>%
     filter(round_label %in% levels(data$round_label)) %>%
     mutate(y_pos = n_agents + 0.7)
-
+  
   p +
     geom_text(data = pl,
               aes(x = round_label, y = y_pos, label = period, colour = colour),
@@ -378,34 +378,34 @@ build_heatmap <- function(data, highlight_anomalies = TRUE) {
 build_divergence_trend <- function(data) {
   trend <- divergence_trend_tbl %>%
     filter(round_label %in% levels(data$round_label))
-
+  
   period_colours <- c(
     "Pre-Embargo"  = "#1565C0",
     "Post-Embargo" = "#E65100",
     "Crisis Day"   = "#B71C1C"
   )
-
+  
   embargo_idx <- which(
     levels(action_final_tbl$round_label) == format(embargo_date, "%b %d %H:%M")
   )
-
+  
   p <- ggplot(trend, aes(x = round_label, y = n_diverged,
-                          colour = period, group = 1)) +
+                         colour = period, group = 1)) +
     geom_line(linewidth = 1.1) +
     geom_point(size = 2.5)
-
+  
   p <- add_period_bands(p, data %>% mutate(round_label = droplevels(round_label)))
-
+  
   p <- p +
     geom_line(linewidth = 1.1) +
     geom_point(size = 2.5)
-
+  
   if (length(embargo_idx) > 0) {
     p <- p +
       geom_vline(xintercept = embargo_idx, colour = "#B71C1C",
                  linewidth = 1, linetype = "dashed")
   }
-
+  
   p +
     scale_colour_manual(values = period_colours, name = NULL) +
     labs(
@@ -431,24 +431,24 @@ build_score_heatmap <- function(data, severity = NULL) {
     "Medium (2)"     = "#FF8A65",
     "High (3)"       = "#C62828"
   )
-
+  
   score_data <- score_tbl %>%
     filter(
       agent_label %in% unique(data$agent_label),
       round_label %in% levels(data$round_label)
     )
-
+  
   if (!is.null(severity) && !"All Severities" %in% severity) {
     score_data <- score_data %>%
       filter(as.character(score_label) %in% severity)
   }
-
+  
   score_data <- score_data %>%
     mutate(
       round_label = factor(round_label, levels = levels(data$round_label)),
       period      = factor(period, levels = c("Pre-Embargo", "Post-Embargo", "Crisis Day"))
     )
-
+  
   ggplot(score_data,
          aes(x = round_label, y = agent_label, fill = score_label)) +
     geom_tile(colour = "white", linewidth = 0.5) +
@@ -485,7 +485,7 @@ build_internal_heatmap <- function(data) {
     "Rationalizing only"           = "#FFCDD2",
     "Deliberating + Rationalizing" = "#CE93D8"
   )
-
+  
   idata <- internal_state_tbl %>%
     filter(
       agent_label %in% unique(data$agent_label),
@@ -495,7 +495,7 @@ build_internal_heatmap <- function(data) {
       round_label = factor(round_label, levels = levels(data$round_label)),
       period      = factor(period, levels = c("Pre-Embargo", "Post-Embargo", "Crisis Day"))
     )
-
+  
   ggplot(idata,
          aes(x = round_label, y = agent_label, fill = internal_label)) +
     geom_tile(colour = "white", linewidth = 0.5) +
@@ -533,7 +533,7 @@ build_period_bar <- function(data) {
       period    = factor(period, levels = c("Pre-Embargo", "Post-Embargo", "Crisis Day")),
       divergence = factor(divergence, levels = c("Consistent", "DIVERGED"))
     )
-
+  
   ggplot(bar_data, aes(x = agent_label, y = n, fill = divergence)) +
     geom_bar(stat = "identity", position = "stack", width = 0.7) +
     facet_wrap(~period, nrow = 1, scales = "free_x") +
@@ -561,16 +561,36 @@ build_period_bar <- function(data) {
 
 
 # ════════════════════════════════════════════════════════════
+# UI HELPERS
+# ════════════════════════════════════════════════════════════
+
+# Renders a short description box above a plot or table.
+# accent = left-border colour; text = plain string.
+plot_desc <- function(text, accent = "#1565C0") {
+  tags$div(
+    style = paste0(
+      "border-left: 4px solid ", accent, "; ",
+      "background: #FAFAFA; ",
+      "padding: 7px 12px; ",
+      "margin-bottom: 10px; ",
+      "border-radius: 0 4px 4px 0; ",
+      "font-size: 12.5px; color: #444;"
+    ),
+    text
+  )
+}
+
+# ════════════════════════════════════════════════════════════
 # UI
 # ════════════════════════════════════════════════════════════
 swimlaneUI <- function(id) {
   ns <- NS(id)
-
+  
   layout_sidebar(
     sidebar = sidebar(
       title = "Swimlane Controls",
       width = 290,
-
+      
       # ── Agent Selection ──
       selectizeInput(
         ns("agents"),
@@ -580,7 +600,7 @@ swimlaneUI <- function(id) {
         multiple = TRUE,
         options  = list(plugins = list("remove_button"))
       ),
-
+      
       # ── Timeline ──
       dateRangeInput(
         ns("timeline"),
@@ -588,9 +608,17 @@ swimlaneUI <- function(id) {
         start = as.Date(min(action_final_tbl$round_hour)),
         end   = as.Date(max(action_final_tbl$round_hour))
       ),
-
+      
+      # ── Period ──
+      selectInput(
+        ns("period"),
+        "Period",
+        choices  = c("All Periods", "Pre-Embargo", "Post-Embargo", "Crisis Day"),
+        selected = "All Periods"
+      ),
+      
       hr(),
-
+      
       # ── Tab-specific filters ──
       conditionalPanel(
         condition = paste0("input['", ns("active_tab"), "'] === 'Swimlane Timeline'"),
@@ -603,9 +631,15 @@ swimlaneUI <- function(id) {
           selected = "All Actions",
           multiple = TRUE,
           options  = list(plugins = list("remove_button"))
+        ),
+        radioButtons(
+          ns("tab1_view"),
+          "Show Plot",
+          choices  = c("Action Heatmap", "Divergence Trend", "Divergence Table"),
+          selected = "Action Heatmap"
         )
       ),
-
+      
       conditionalPanel(
         condition = paste0("input['", ns("active_tab"), "'] === 'Behaviour Scores'"),
         selectizeInput(
@@ -616,9 +650,15 @@ swimlaneUI <- function(id) {
           selected = "All Severities",
           multiple = TRUE,
           options  = list(plugins = list("remove_button"))
+        ),
+        radioButtons(
+          ns("tab2_view"),
+          "Show Plot",
+          choices  = c("Severity Heatmap", "Internal State Heatmap", "Summary Table"),
+          selected = "Severity Heatmap"
         )
       ),
-
+      
       conditionalPanel(
         condition = paste0("input['", ns("active_tab"), "'] === 'Risk Rankings'"),
         selectizeInput(
@@ -628,19 +668,25 @@ swimlaneUI <- function(id) {
           selected = "All",
           multiple = TRUE,
           options  = list(plugins = list("remove_button"))
+        ),
+        radioButtons(
+          ns("tab3_view"),
+          "Show Plot",
+          choices  = c("Period Bar Chart", "Risk Table"),
+          selected = "Period Bar Chart"
         )
       ),
-
+      
       hr(),
-
+      
       conditionalPanel(
         condition = paste0("input['", ns("active_tab"), "'] === 'Swimlane Timeline'"),
         checkboxInput(ns("highlight_anomalies"), "Highlight Anomalies", value = TRUE),
         checkboxInput(ns("show_prebreach"),      "Show Pre-breach Zoom", value = FALSE)
       ),
-
+      
       hr(),
-
+      
       # ── Download buttons ──
       conditionalPanel(
         condition = paste0("input['", ns("active_tab"), "'] === 'Swimlane Timeline'"),
@@ -660,81 +706,157 @@ swimlaneUI <- function(id) {
         downloadButton(ns("dl_risk_tbl"), "Download Risk Table",class = "btn-sm btn-outline-secondary w-100")
       )
     ),
-
+    
     # ── Main Panel ──
     div(
       class = "p-3",
       navset_card_tab(
         id = ns("active_tab"),
-
+        
         # ── Tab 1: Swimlane Timeline ──────────────────────
         nav_panel(
           "Swimlane Timeline",
           card_body(
-            tags$p(tags$small(tags$em(
-              "Click any tile to view the agent's messages for that round."
-            ), style = "color: grey;")),
-            plotOutput(ns("swimlane_plot"),
-                       height = "500px",
-                       click  = ns("tile_click")),
-            hr(),
-            plotOutput(ns("diverge_trend"), height = "220px"),
             conditionalPanel(
-              condition = paste0("input['", ns("show_prebreach"), "']"),
-              hr(),
-              tags$strong("Pre-breach zoom — last 5 rounds before June 5"),
-              plotOutput(ns("prebreach_plot"), height = "320px")
+              condition = paste0("input['", ns("tab1_view"), "'] === 'Action Heatmap'"),
+              plot_desc(
+                "Action Heatmap — Each row is an agent; each column is a communication round.
+                 Tile colour shows what the agent did that round (see legend). Background shading
+                 marks the three periods: blue = Pre-Embargo, yellow = Post-Embargo, red = Crisis Day.
+                 A thick red border means the agent declared MONITORING but actually used a posting
+                 channel (divergence). The red vertical line marks when the embargo was declared.
+                 Click any tile to read the agent's messages for that round.",
+                accent = "#1565C0"
+              ),
+              plotOutput(ns("swimlane_plot"),
+                         height = "500px",
+                         click  = ns("tile_click")),
+              conditionalPanel(
+                condition = paste0("input['", ns("show_prebreach"), "']"),
+                hr(),
+                plot_desc(
+                  "Pre-breach Zoom — Focuses on the five rounds immediately before Crisis Day.
+                   Use this to spot early warning signs: agents switching to side-huddle or
+                   personal channels before the main breach occurred.",
+                  accent = "#B71C1C"
+                ),
+                plotOutput(ns("prebreach_plot"), height = "320px")
+              )
             ),
-            hr(),
-            tags$p(tags$em(
-              "Rounds where agent declared ",
-              tags$strong("MONITORING"),
-              " but actually used anonymous, personal, or side-huddle channels:"
-            )),
-            tags$style(HTML("
-              .diverge-table thead tr th {
-                background-color: #B71C1C !important;
-                color: white; font-size: 12px;
-              }
-              .diverge-table tbody tr:hover { background-color: #fdecea !important; }
-            ")),
-            DTOutput(ns("diverge_table"))
+            conditionalPanel(
+              condition = paste0("input['", ns("tab1_view"), "'] === 'Divergence Trend'"),
+              plot_desc(
+                "Divergence Trend — Counts how many agents diverged (declared MONITORING but posted)
+                 in each round, coloured by period. A flat line near zero is normal; a rising trend
+                 signals escalating non-compliance. Use this to judge whether the breach was sudden
+                 or built up gradually.",
+                accent = "#E65100"
+              ),
+              plotOutput(ns("diverge_trend"), height = "400px")
+            ),
+            conditionalPanel(
+              condition = paste0("input['", ns("tab1_view"), "'] === 'Divergence Table'"),
+              plot_desc(
+                "Divergence Table — Lists every round where an agent formally declared MONITORING
+                 but used a posting channel. Includes the period, actual channels used, and message
+                 count. Note: declared actions are only recorded by The Judge on Crisis Day, so
+                 earlier rounds will not appear here.",
+                accent = "#B71C1C"
+              ),
+              tags$style(HTML("
+                .diverge-table thead tr th {
+                  background-color: #B71C1C !important;
+                  color: white; font-size: 12px;
+                }
+                .diverge-table tbody tr:hover { background-color: #fdecea !important; }
+              ")),
+              DTOutput(ns("diverge_table"))
+            )
           )
         ),
-
+        
         # ── Tab 2: Behaviour Scores ───────────────────────
         nav_panel(
           "Behaviour Scores",
           card_body(
-            plotOutput(ns("score_heatmap"), height = "450px"),
-            hr(),
-            plotOutput(ns("internal_heatmap"), height = "420px"),
-            hr(),
-            tags$style(HTML("
-              .score-summary-table thead tr th {
-                background-color: #388E3C !important;
-                color: white; font-size: 12px;
-              }
-              .score-summary-table tbody tr:hover { background-color: #f1f8e9 !important; }
-            ")),
-            DTOutput(ns("score_summary_table"))
+            conditionalPanel(
+              condition = paste0("input['", ns("tab2_view"), "'] === 'Severity Heatmap'"),
+              plot_desc(
+                "Violation Severity Heatmap — Same grid layout as the Swimlane Timeline, but tile
+                 colour now shows how serious the violation was: green = consistent behaviour,
+                 yellow = Low (side huddle, weight 1), orange = Medium (personal post, weight 2),
+                 red = High (anonymous post, weight 3). Split into three panels by period so you
+                 can directly compare Pre-Embargo, Post-Embargo, and Crisis Day side by side.",
+                accent = "#388E3C"
+              ),
+              plotOutput(ns("score_heatmap"), height = "500px")
+            ),
+            conditionalPanel(
+              condition = paste0("input['", ns("tab2_view"), "'] === 'Internal State Heatmap'"),
+              plot_desc(
+                "Internal State Heatmap — Shows whether agents were deliberating (blue, forward
+                 planning) or rationalising (red, post-hoc justification) each round, also split
+                 by period. Rationalising on the same round as a high-severity violation is a
+                 strong indicator that the agent knew the action was questionable. Purple means
+                 both states were active.",
+                accent = "#6A1B9A"
+              ),
+              plotOutput(ns("internal_heatmap"), height = "500px")
+            ),
+            conditionalPanel(
+              condition = paste0("input['", ns("tab2_view"), "'] === 'Summary Table'"),
+              plot_desc(
+                "Period Summary Table — Per-agent, per-period counts of each severity level
+                 (Consistent / Low / Medium / High). Each agent has up to three rows — one for
+                 each period — so you can directly compare whether violations escalated after
+                 the embargo. Sort by High (3) descending to rank the most serious offenders.",
+                accent = "#388E3C"
+              ),
+              tags$style(HTML("
+                .score-summary-table thead tr th {
+                  background-color: #388E3C !important;
+                  color: white; font-size: 12px;
+                }
+                .score-summary-table tbody tr:hover { background-color: #f1f8e9 !important; }
+              ")),
+              DTOutput(ns("score_summary_table"))
+            )
           )
         ),
-
+        
         # ── Tab 3: Risk Rankings ──────────────────────────
         nav_panel(
           "Risk Rankings",
           card_body(
-            plotOutput(ns("period_bar"), height = "320px"),
-            hr(),
-            tags$style(HTML("
-              .risk-table thead tr th {
-                background-color: #1565C0 !important;
-                color: white; font-size: 12px;
-              }
-              .risk-table tbody tr:hover { background-color: #e3f2fd !important; }
-            ")),
-            DTOutput(ns("risk_table"))
+            conditionalPanel(
+              condition = paste0("input['", ns("tab3_view"), "'] === 'Period Bar Chart'"),
+              plot_desc(
+                "Period Bar Chart — Shows Consistent (green) vs Diverged (red) rounds per agent,
+                 split into three panels by period. An agent with only green bars Pre-Embargo but
+                 red on Crisis Day changed behaviour specifically on breach day. An agent with red
+                 bars across all periods had pre-existing non-compliance.",
+                accent = "#1565C0"
+              ),
+              plotOutput(ns("period_bar"), height = "500px")
+            ),
+            conditionalPanel(
+              condition = paste0("input['", ns("tab3_view"), "'] === 'Risk Table'"),
+              plot_desc(
+                "Risk Rankings Table — One row per agent, ranked by overall Risk Score.
+                 Pre-Embargo, Post-Embargo, and Crisis scores are shown separately so you can
+                 see when risk was highest. Compliance Violation shows the worst channel type
+                 observed. Click any row to open a full agent profile card.",
+                accent = "#1565C0"
+              ),
+              tags$style(HTML("
+                .risk-table thead tr th {
+                  background-color: #1565C0 !important;
+                  color: white; font-size: 12px;
+                }
+                .risk-table tbody tr:hover { background-color: #e3f2fd !important; }
+              ")),
+              DTOutput(ns("risk_table"))
+            )
           )
         )
       )
@@ -748,56 +870,59 @@ swimlaneUI <- function(id) {
 # ════════════════════════════════════════════════════════════
 swimlaneServer <- function(id) {
   moduleServer(id, function(input, output, session) {
-
+    
     # ── Filtered data ─────────────────────────────────────
     filtered_data <- reactive({
       data <- action_final_tbl
-
+      
       if (!is.null(input$agents) && !"All Agents" %in% input$agents)
         data <- data %>% filter(agent_label %in% input$agents)
-
+      
       data <- data %>%
         filter(
           as.Date(round_hour) >= input$timeline[1],
           as.Date(round_hour) <= input$timeline[2]
         )
-
+      
+      if (!is.null(input$period) && input$period != "All Periods")
+        data <- data %>% filter(period == input$period)
+      
       if (!is.null(input$actions) && !"All Actions" %in% input$actions)
         data <- data %>% filter(as.character(display_action) %in% input$actions)
-
+      
       data %>% mutate(round_label = droplevels(round_label))
     })
-
+    
     # ── Swimlane heatmap ──────────────────────────────────
     output$swimlane_plot <- renderPlot({
       req(nrow(filtered_data()) > 0)
       build_heatmap(filtered_data(), highlight_anomalies = input$highlight_anomalies)
     }, height = 500)
-
+    
     # ── Clickable tile → message drawer ──────────────────
     observeEvent(input$tile_click, {
       click <- input$tile_click
       req(click)
-
+      
       data         <- filtered_data()
       agent_levels <- sort(unique(data$agent_label))
       round_levels <- levels(data$round_label)
-
+      
       agent_idx <- round(click$y)
       round_idx <- round(click$x)
-
+      
       req(agent_idx >= 1, agent_idx <= length(agent_levels),
           round_idx >= 1, round_idx <= length(round_levels))
-
+      
       clicked_agent <- agent_levels[agent_idx]
       clicked_round <- round_levels[round_idx]
-
+      
       msgs <- messages_tbl %>%
         filter(
           coalesce(agent_label, agent_id) == clicked_agent,
           format(round_hour, "%b %d %H:%M") == clicked_round
         )
-
+      
       showModal(modalDialog(
         title     = paste0(clicked_agent, "  —  Round: ", clicked_round),
         size      = "l",
@@ -837,30 +962,30 @@ swimlaneServer <- function(id) {
         footer = modalButton("Close")
       ))
     })
-
+    
     # ── Divergence trend line ─────────────────────────────
     output$diverge_trend <- renderPlot({
       req(nrow(filtered_data()) > 0)
       build_divergence_trend(filtered_data())
-    }, height = 220)
-
+    }, height = 400)
+    
     # ── Pre-breach zoom ───────────────────────────────────
     output$prebreach_plot <- renderPlot({
       build_heatmap(prebreach_tbl, highlight_anomalies = TRUE)
     }, height = 320)
-
+    
     # ── Behaviour score heatmap (faceted) ─────────────────
     output$score_heatmap <- renderPlot({
       req(nrow(filtered_data()) > 0)
       build_score_heatmap(filtered_data(), severity = input$severity)
     }, height = 450)
-
+    
     # ── Internal state heatmap ────────────────────────────
     output$internal_heatmap <- renderPlot({
       req(nrow(filtered_data()) > 0)
       build_internal_heatmap(filtered_data())
     }, height = 420)
-
+    
     # ── Behaviour scores summary table (with period) ──────
     output$score_summary_table <- renderDT({
       score_summary <- score_tbl %>%
@@ -887,7 +1012,7 @@ swimlaneServer <- function(id) {
         ) %>%
         arrange(agent_label, period) %>%
         rename(Agent = agent_label, Period = period)
-
+      
       datatable(
         score_summary,
         class    = "score-summary-table",
@@ -903,25 +1028,25 @@ swimlaneServer <- function(id) {
       ) %>%
         formatStyle(columns = names(score_summary), fontSize = "12px") %>%
         formatStyle("Period",
-          backgroundColor = styleEqual(
-            c("Pre-Embargo", "Post-Embargo", "Crisis Day"),
-            c("#E3F2FD",     "#FFF8E1",      "#FFEBEE")
-          )
+                    backgroundColor = styleEqual(
+                      c("Pre-Embargo", "Post-Embargo", "Crisis Day"),
+                      c("#E3F2FD",     "#FFF8E1",      "#FFEBEE")
+                    )
         ) %>%
         formatStyle("High (3)",
-          backgroundColor = styleInterval(c(0, 1), c("#F1F8E9", "#FFEBEE", "#FFCDD2"))) %>%
+                    backgroundColor = styleInterval(c(0, 1), c("#F1F8E9", "#FFEBEE", "#FFCDD2"))) %>%
         formatStyle("Medium (2)",
-          backgroundColor = styleInterval(c(0, 1), c("#F1F8E9", "#FFF8E1", "#FFE0B2"))) %>%
+                    backgroundColor = styleInterval(c(0, 1), c("#F1F8E9", "#FFF8E1", "#FFE0B2"))) %>%
         formatStyle("Low (1)",
-          backgroundColor = styleInterval(c(0, 1), c("#F1F8E9", "#FFFDE7", "#FFF176")))
+                    backgroundColor = styleInterval(c(0, 1), c("#F1F8E9", "#FFFDE7", "#FFF176")))
     })
-
+    
     # ── Period stacked bar ────────────────────────────────
     output$period_bar <- renderPlot({
       req(nrow(filtered_data()) > 0)
       build_period_bar(filtered_data())
-    }, height = 320)
-
+    }, height = 500)
+    
     # ── Risk Rankings table ───────────────────────────────
     output$risk_table <- renderDT({
       rt <- risk_tbl
@@ -929,12 +1054,12 @@ swimlaneServer <- function(id) {
         rt <- rt %>% filter(Agent %in% input$agents)
       if (!is.null(input$violation) && !"All" %in% input$violation)
         rt <- rt %>% filter(`Compliance Violation` %in% input$violation)
-
+      
       violation_colours <- c(
         "High" = "#FFCDD2", "Medium" = "#FFE0B2",
         "Low"  = "#FFF9C4", "None"   = "#F1F8E9"
       )
-
+      
       datatable(
         rt, class = "risk-table", rownames = FALSE,
         options = list(
@@ -947,77 +1072,77 @@ swimlaneServer <- function(id) {
       ) %>%
         formatStyle(columns = names(rt), fontSize = "12px") %>%
         formatStyle("Compliance Violation",
-          backgroundColor = styleEqual(names(violation_colours),
-                                       unname(violation_colours))) %>%
+                    backgroundColor = styleEqual(names(violation_colours),
+                                                 unname(violation_colours))) %>%
         formatStyle("Pre-Embargo Score",
-          background = styleColorBar(c(0, max(rt$`Pre-Embargo Score`, 1)), "#90CAF9"),
-          backgroundSize = "100% 80%", backgroundRepeat = "no-repeat",
-          backgroundPosition = "center") %>%
+                    background = styleColorBar(c(0, max(rt$`Pre-Embargo Score`, 1)), "#90CAF9"),
+                    backgroundSize = "100% 80%", backgroundRepeat = "no-repeat",
+                    backgroundPosition = "center") %>%
         formatStyle("Post-Embargo Score",
-          background = styleColorBar(c(0, max(rt$`Post-Embargo Score`, 1)), "#FFCC80"),
-          backgroundSize = "100% 80%", backgroundRepeat = "no-repeat",
-          backgroundPosition = "center") %>%
+                    background = styleColorBar(c(0, max(rt$`Post-Embargo Score`, 1)), "#FFCC80"),
+                    backgroundSize = "100% 80%", backgroundRepeat = "no-repeat",
+                    backgroundPosition = "center") %>%
         formatStyle("Crisis Score",
-          background = styleColorBar(c(0, max(rt$`Crisis Score`, 1)), "#EF9A9A"),
-          backgroundSize = "100% 80%", backgroundRepeat = "no-repeat",
-          backgroundPosition = "center") %>%
+                    background = styleColorBar(c(0, max(rt$`Crisis Score`, 1)), "#EF9A9A"),
+                    backgroundSize = "100% 80%", backgroundRepeat = "no-repeat",
+                    backgroundPosition = "center") %>%
         formatStyle("Risk Score",
-          background = styleColorBar(rt$`Risk Score`, "#1565C0"),
-          backgroundSize = "100% 80%", backgroundRepeat = "no-repeat",
-          backgroundPosition = "center") %>%
+                    background = styleColorBar(rt$`Risk Score`, "#1565C0"),
+                    backgroundSize = "100% 80%", backgroundRepeat = "no-repeat",
+                    backgroundPosition = "center") %>%
         formatStyle("Consistency Score",
-          background = styleColorBar(c(0, 1), "#43A047"),
-          backgroundSize = "100% 80%", backgroundRepeat = "no-repeat",
-          backgroundPosition = "center")
+                    background = styleColorBar(c(0, 1), "#43A047"),
+                    backgroundSize = "100% 80%", backgroundRepeat = "no-repeat",
+                    backgroundPosition = "center")
     })
-
+    
     # ── Agent profile modal (row click in risk table) ─────
     observeEvent(input$risk_table_rows_selected, {
       sel <- input$risk_table_rows_selected
       req(length(sel) > 0)
-
+      
       rt <- risk_tbl
       if (!is.null(input$agents) && !"All Agents" %in% input$agents)
         rt <- rt %>% filter(Agent %in% input$agents)
-
+      
       agent_name <- rt$Agent[sel]
       agent_data <- action_final_tbl %>% filter(agent_label == agent_name)
       agent_msgs <- messages_tbl %>%
         filter(coalesce(agent_label, agent_id) == agent_name)
-
+      
       channel_breakdown <- agent_msgs %>%
         group_by(channel) %>% summarise(n = n(), .groups = "drop") %>%
         arrange(desc(n))
-
+      
       showModal(modalDialog(
         title     = paste0("Agent Profile — ", agent_name),
         size      = "l",
         easyClose = TRUE,
         fluidRow(
           column(6,
-            tags$h6("Overall Stats"),
-            tags$p(tags$strong("Total rounds active: "), nrow(agent_data)),
-            tags$p(tags$strong("Mismatch count: "),
-                   rt$`Mismatch Count`[sel]),
-            tags$p(tags$strong("Risk score: "), rt$`Risk Score`[sel]),
-            tags$p(tags$strong("Compliance violation: "),
-                   rt$`Compliance Violation`[sel]),
-            tags$p(tags$strong("Consistency score: "),
-                   rt$`Consistency Score`[sel])
+                 tags$h6("Overall Stats"),
+                 tags$p(tags$strong("Total rounds active: "), nrow(agent_data)),
+                 tags$p(tags$strong("Mismatch count: "),
+                        rt$`Mismatch Count`[sel]),
+                 tags$p(tags$strong("Risk score: "), rt$`Risk Score`[sel]),
+                 tags$p(tags$strong("Compliance violation: "),
+                        rt$`Compliance Violation`[sel]),
+                 tags$p(tags$strong("Consistency score: "),
+                        rt$`Consistency Score`[sel])
           ),
           column(6,
-            tags$h6("Period Risk Scores"),
-            tags$p(tags$strong("Pre-Embargo: "),  rt$`Pre-Embargo Score`[sel]),
-            tags$p(tags$strong("Post-Embargo: "), rt$`Post-Embargo Score`[sel]),
-            tags$p(tags$strong("Crisis Day: "),   rt$`Crisis Score`[sel]),
-            tags$h6("Channel Breakdown"),
-            renderTable(channel_breakdown, striped = TRUE, bordered = TRUE)
+                 tags$h6("Period Risk Scores"),
+                 tags$p(tags$strong("Pre-Embargo: "),  rt$`Pre-Embargo Score`[sel]),
+                 tags$p(tags$strong("Post-Embargo: "), rt$`Post-Embargo Score`[sel]),
+                 tags$p(tags$strong("Crisis Day: "),   rt$`Crisis Score`[sel]),
+                 tags$h6("Channel Breakdown"),
+                 renderTable(channel_breakdown, striped = TRUE, bordered = TRUE)
           )
         ),
         footer = modalButton("Close")
       ))
     })
-
+    
     # ── Divergence table ──────────────────────────────────
     output$diverge_table <- renderDT({
       div_data <- filtered_data() %>%
@@ -1031,7 +1156,7 @@ swimlaneServer <- function(id) {
           `Messages sent`   = n_messages
         ) %>%
         select(Date, Agent, Period, Declared, `Actual channels`, `Messages sent`)
-
+      
       datatable(
         div_data, class = "diverge-table", rownames = FALSE,
         options = list(
@@ -1048,13 +1173,13 @@ swimlaneServer <- function(id) {
       ) %>%
         formatStyle(columns = names(div_data), fontSize = "11px") %>%
         formatStyle("Period",
-          backgroundColor = styleEqual(
-            c("Pre-Embargo", "Post-Embargo", "Crisis Day"),
-            c("#E3F2FD",     "#FFF8E1",      "#FFEBEE")
-          )
+                    backgroundColor = styleEqual(
+                      c("Pre-Embargo", "Post-Embargo", "Crisis Day"),
+                      c("#E3F2FD",     "#FFF8E1",      "#FFEBEE")
+                    )
         )
     })
-
+    
     # ── Download handlers ─────────────────────────────────
     output$dl_swimlane <- downloadHandler(
       filename = function() paste0("swimlane_heatmap_", Sys.Date(), ".png"),
@@ -1127,6 +1252,6 @@ swimlaneServer <- function(id) {
       filename = function() paste0("risk_rankings_", Sys.Date(), ".csv"),
       content  = function(file) write.csv(risk_tbl, file, row.names = FALSE)
     )
-
+    
   })
 }
