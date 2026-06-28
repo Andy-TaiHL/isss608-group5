@@ -83,7 +83,7 @@ calculate_metrics <- function(edge_data) {
     ))
   }
   
-  # --- count(from, to, name = "weight") ---
+  # Aggregate for weighted graph
   network_edges <- aggregate(
     list(weight = rep(1, nrow(edge_data))),
     by = list(from = edge_data$from, to = edge_data$to),
@@ -114,9 +114,13 @@ calculate_metrics <- function(edge_data) {
   
   metrics <- data.frame(
     Agent       = V(agent_network)$name,
-    Degree      = degree(agent_network, mode = "all"),
-    Betweenness = round(betweenness(agent_network, directed = TRUE), 2),
-    Closeness   = round(closeness(agent_network, mode = "all"), 2),
+    # Use in+out degree to reflect total communication activity
+    Degree      = degree(agent_network, mode = "total"),
+    # Use weights=NA so betweenness counts structural paths, not weighted
+    # directed=TRUE respects arrow direction
+    Betweenness = round(betweenness(agent_network, directed = TRUE, weights = NA), 2),
+    # Use out-closeness: how efficiently a node can reach others
+    Closeness   = round(closeness(agent_network, mode = "out"), 2),
     Eigenvector = round(eigen_centrality(agent_network, directed = TRUE)$vector, 2),
     stringsAsFactors = FALSE,
     row.names = NULL
@@ -411,14 +415,14 @@ networkUI <- function(id) {
                        style = "color:#BFC7D5; font-size:13px; font-family:Inter,sans-serif;
                                 font-weight:600; white-space:nowrap; margin:0;"),
             div(style = "width:140px; margin-bottom:-15px;",
-                selectizeInput(ns("sel_node_id"), NULL,
-                               choices  = c("(all agents)" = "",
-                                            setNames(
-                                              sort(unique(c(reply_edges$from, reply_edges$to))),
-                                              gsub("-Agent$", "", sort(unique(c(reply_edges$from, reply_edges$to))))
-                                            )),
-                               selected = "",
-                               options  = list(placeholder = "(all agents)")
+                selectInput(ns("sel_node_id"), NULL,
+                            choices  = c("(all agents)" = "",
+                                         setNames(
+                                           sort(unique(c(reply_edges$from, reply_edges$to))),
+                                           gsub("-Agent$", "", sort(unique(c(reply_edges$from, reply_edges$to))))
+                                         )),
+                            selected = "",
+                            width    = "100%"
                 )
             ),
             tags$button("Reset", id = ns("reset_selection"),
@@ -615,7 +619,13 @@ networkServer <- function(id) {
     })
     
     filtered_metrics <- reactive({
-      metrics <- calculate_metrics(filtered_edges())
+      # Always compute metrics on ALL agents for the selected time period
+      # Agent type filter only affects supporting records, not centrality scores
+      edge_data <- reply_edges
+      if (input$time_period != "Entire Investigation") {
+        edge_data <- edge_data[edge_data$period == input$time_period, ]
+      }
+      metrics <- calculate_metrics(edge_data)
       metrics[order(-metrics[[input$centrality_metric]]), ]
     })
     
@@ -840,39 +850,7 @@ networkServer <- function(id) {
       time_period <- input$time_period
       agent_type  <- input$agent_type
       metric      <- input$centrality_metric
-      if (nrow(metrics) == 0) return(NULL)
       
-      m <- metrics
-      m$Agent <- gsub("-Agent$", "", m$Agent)
-      
-      # Sort by selected metric to get correct top agent
-      m <- m[order(-m[[metric]]), ]
-      
-      top_btwn <- m$Agent[which.max(m$Betweenness)]
-      top_deg  <- m$Agent[which.max(m$Degree)]
-      top_eig  <- m$Agent[which.max(m$Eigenvector)]
-      top_met  <- m$Agent[1]   # top for currently selected metric
-      
-      val_btwn <- max(m$Betweenness, na.rm = TRUE)
-      val_deg  <- max(m$Degree,      na.rm = TRUE)
-      val_eig  <- round(max(m$Eigenvector, na.rm = TRUE), 2)
-      val_met  <- m[[metric]][1]
-      
-      # Metric-specific labels and sentences
-      metric_label <- switch(metric,
-                             Betweenness  = "Primary Bridge",
-                             Degree       = "Most Connected",
-                             Closeness    = "Most Reachable",
-                             Eigenvector  = "Most Influential"
-      )
-      metric_sentence <- switch(metric,
-                                Betweenness = paste0(top_met, " (Betweenness = ", val_btwn, ") served as the main intermediary connecting communication paths and is a key candidate for tracing information flow."),
-                                Degree      = paste0(top_met, " (Degree = ", val_deg, ") interacted directly with the largest number of agents, indicating a strong coordination role."),
-                                Closeness   = paste0(top_met, " (Closeness = ", round(val_met,2), ") can reach all other agents most efficiently, making it a fast information disseminator."),
-                                Eigenvector = paste0(top_met, " (Eigenvector = ", val_eig, ") was closely connected to other influential agents, suggesting strategic involvement within the communication network.")
-      )
-      
-      # Period context
       period_note <- switch(time_period,
                             "Pre-Embargo"          = "During normal pre-embargo operations, communication patterns reflect routine coordination.",
                             "Embargo\u2192Leak"    = "With the embargo active, communication intensified as agents coordinated around information control.",
@@ -881,9 +859,39 @@ networkServer <- function(id) {
                             "Entire Investigation" = "Across the full investigation period, patterns reflect both routine and crisis-driven communication."
       )
       
-      # Decide which bullets to show:
-      # If only metric changed (time = Entire Investigation, agent = All) → show only selected metric bullet
-      # Otherwise → show all three bullets
+      # Handle empty data case
+      if (nrow(metrics) == 0) {
+        return(div(style = "background:#0f1f3d; border-left:3px solid #56CCF2;
+                     border-radius:4px; padding:8px 14px; margin-bottom:0;",
+                   tags$p("Centrality Table Interpretation",
+                          style = "color:#56CCF2; font-size:11px; font-weight:700;
+                          font-family:Inter,sans-serif; margin:0 0 4px 0;
+                          text-transform:uppercase; letter-spacing:0.06em;"),
+                   tags$p(period_note,
+                          style = "color:#7A8FA6; font-size:11px; font-family:Inter,sans-serif;
+                          margin:0 0 6px 0; font-style:italic;"),
+                   tags$p("No communication data available for this combination of filters. This agent had no recorded reply interactions during this time period.",
+                          style = "color:#BFC7D5; font-size:12px; font-family:Inter,sans-serif; margin:0;")
+        ))
+      }
+      
+      # filtered_metrics() is already global (time-period only, no agent filter)
+      gm <- metrics
+      gm$Agent <- gsub("-Agent$", "", gm$Agent)
+      
+      top_btwn <- gm$Agent[which.max(gm$Betweenness)]
+      top_deg  <- gm$Agent[which.max(gm$Degree)]
+      top_eig  <- gm$Agent[which.max(gm$Eigenvector)]
+      top_clos <- gm$Agent[which.max(gm$Closeness)]
+      
+      val_btwn <- max(gm$Betweenness, na.rm = TRUE)
+      val_deg  <- max(gm$Degree,      na.rm = TRUE)
+      val_eig  <- round(max(gm$Eigenvector, na.rm = TRUE), 2)
+      val_clos <- round(max(gm$Closeness,   na.rm = TRUE), 2)
+      
+      # Context note when agent type is filtered - removed, interpretation always uses global metrics
+      context <- ""
+      
       only_metric <- (time_period == "Entire Investigation" && agent_type == "All")
       
       bullet <- function(label, text) {
@@ -895,13 +903,27 @@ networkServer <- function(id) {
         )
       }
       
+      btwn_text <- if (val_btwn == 0)
+        paste0("All agents recorded zero betweenness centrality, indicating that information flow was not dependent on any single intermediary. Communication remained decentralised with multiple alternative routes.", context)
+      else
+        paste0(top_btwn, " (Betweenness = ", val_btwn, ") served as the main intermediary connecting communication paths.", context)
+      
       bullets <- if (only_metric) {
-        list(bullet(metric_label, metric_sentence))
+        metric_label <- switch(metric,
+                               Betweenness="Primary Bridge", Degree="Most Connected",
+                               Closeness="Most Reachable", Eigenvector="Most Influential")
+        metric_text <- switch(metric,
+                              Betweenness = btwn_text,
+                              Degree      = paste0(top_deg,  " (Degree = ", val_deg, ") interacted directly with the largest number of agents, indicating a strong coordination role.", context),
+                              Closeness   = paste0(top_clos, " (Closeness = ", val_clos, ") can reach all other agents most efficiently, making it a fast information disseminator.", context),
+                              Eigenvector = paste0(top_eig,  " (Eigenvector = ", val_eig, ") was closely connected to other influential agents, suggesting strategic involvement within the communication network.", context)
+        )
+        list(bullet(metric_label, metric_text))
       } else {
         list(
-          bullet("Primary Bridge",   paste0(top_btwn, " (Betweenness = ", val_btwn, ") served as the main intermediary connecting communication paths and is a key candidate for tracing information flow.")),
-          bullet("Most Connected",   paste0(top_deg,  " (Degree = ", val_deg, ") interacted directly with the largest number of agents, indicating a coordination role.")),
-          bullet("Most Influential", paste0(top_eig,  " (Eigenvector = ", val_eig, ") was closely connected to other influential agents, suggesting strategic involvement within the communication network."))
+          bullet("Primary Bridge",   btwn_text),
+          bullet("Most Connected",   paste0(top_deg, " (Degree = ", val_deg, ") interacted directly with the largest number of agents, indicating a coordination role.", context)),
+          bullet("Most Influential", paste0(top_eig, " (Eigenvector = ", val_eig, ") was closely connected to other influential agents, suggesting strategic involvement within the communication network.", context))
         )
       }
       
@@ -909,7 +931,7 @@ networkServer <- function(id) {
                    border-radius:4px; padding:8px 14px; margin-bottom:0;",
           tags$p("Centrality Table Interpretation",
                  style = "color:#56CCF2; font-size:11px; font-weight:700;
-                          font-family:Inter,sans-serif; margin:0 0 8px 0;
+                          font-family:Inter,sans-serif; margin:0 0 6px 0;
                           text-transform:uppercase; letter-spacing:0.06em;"),
           tags$p(period_note,
                  style = "color:#7A8FA6; font-size:11px; font-family:Inter,sans-serif;
@@ -978,11 +1000,24 @@ networkServer <- function(id) {
       agent_type  <- input$agent_type
       do_highlight <- (time_period == "Entire Investigation" && agent_type == "All")
       
+      # Get the display label of selected agent for row highlighting
+      agent_display <- if (agent_type != "All") switch(agent_type,
+                                                       "intern"         = "Intern",
+                                                       "judge"          = "Judge",
+                                                       "legal"          = "Legal",
+                                                       "platform_trust" = "Platform-Trust",
+                                                       "pr"             = "PR",
+                                                       "pr_intern"      = "PR-Intern",
+                                                       "social_media"   = "Social-Manager",
+                                                       ""
+      ) else ""
+      
       draw_js <- sprintf("
         function() {
           var api = this.api();
           var colIdx = %d;
           var doHighlight = %s;
+          var agentLabel = '%s';
           setTimeout(function() {
             var wrapper = api.table().container();
             wrapper.querySelectorAll('*').forEach(function(el) {
@@ -997,7 +1032,7 @@ networkServer <- function(id) {
                 cell.style.setProperty('font-weight', 'normal', 'important');
               });
             });
-            // clear inline bg/color on ALL rows first, then re-apply to selected only
+            // clear inline bg/color on ALL rows first
             api.rows().nodes().each(function(row) {
               Array.from(row.cells).forEach(function(cell) {
                 cell.style.removeProperty('background-color');
@@ -1015,16 +1050,30 @@ networkServer <- function(id) {
                 maxCell.style.setProperty('font-weight', 'bold', 'important');
               }
             }
-            // apply selection colour to currently selected row only
+            // apply selection colour to currently selected row (manual click)
             api.rows('.selected').nodes().each(function(row) {
               Array.from(row.cells).forEach(function(cell) {
                 cell.style.setProperty('background-color', '#56CCF2', 'important');
                 cell.style.setProperty('color', '#0a1628', 'important');
               });
             });
+            // highlight agent type row in amber if agent filter is active
+            if (agentLabel !== '') {
+              api.rows().every(function() {
+                var rowData = this.data();
+                if (rowData[0] === agentLabel) {
+                  var rowNode = this.node();
+                  Array.from(rowNode.cells).forEach(function(cell) {
+                    cell.style.setProperty('background-color', '#56CCF2', 'important');
+                    cell.style.setProperty('color', '#0a1628', 'important');
+                    cell.style.setProperty('font-weight', 'bold', 'important');
+                  });
+                }
+              });
+            }
           }, 50);
         }
-      ", metric_col_idx, tolower(as.character(do_highlight)))
+      ", metric_col_idx, tolower(as.character(do_highlight)), agent_display)
       
       datatable(
         table_data,
@@ -1143,49 +1192,119 @@ networkServer <- function(id) {
       )
     })
     
-    output$supporting_label <- renderUI({
-      metrics <- filtered_metrics()
-      sel_row <- input$centrality_table_rows_selected
+    # Resolve which agent to show in supporting records:
+    # Row click always wins once clicked; agent_type dropdown is the default when no row selected
+    selected_support_agent <- reactive({
+      metrics    <- filtered_metrics()
+      if (nrow(metrics) == 0) return(NULL)
       
+      # Row click takes priority over dropdown
+      sel_row <- input$centrality_table_rows_selected
       if (length(sel_row) > 0 && nrow(metrics) >= sel_row) {
-        agent <- metrics$Agent[sel_row]
-        tags$p(
-          paste0("Showing communications involving ", agent,
-                 " — click a different row to change."),
-          style = "font-size:12px; font-family:Inter,sans-serif; color:#56CCF2; margin-bottom:6px;"
+        return(metrics$Agent[sel_row])
+      }
+      
+      # Fall back to agent_type dropdown
+      agent_type <- input$agent_type
+      if (agent_type != "All") {
+        label <- switch(agent_type,
+                        "intern"         = "Intern-Agent",
+                        "judge"          = "Judge-Agent",
+                        "legal"          = "Legal-Agent",
+                        "platform_trust" = "Platform-Trust-Agent",
+                        "pr"             = "PR-Agent",
+                        "pr_intern"      = "PR-Intern-Agent",
+                        "social_media"   = "Social-Manager-Agent",
+                        NULL
         )
+        if (!is.null(label)) return(label)
+      }
+      
+      metrics$Agent[1]  # default: top agent
+    })
+    
+    # Clear row selection when agent type changes so dropdown takes effect cleanly
+    observeEvent(input$agent_type, {
+      dataTableProxy(session$ns("centrality_table")) %>% selectRows(NULL)
+    }, ignoreInit = TRUE)
+    
+    output$supporting_label <- renderUI({
+      agent      <- selected_support_agent()
+      if (is.null(agent)) return(NULL)
+      agent_type  <- input$agent_type
+      time_period <- input$time_period
+      metric      <- input$centrality_metric
+      sel_row     <- input$centrality_table_rows_selected
+      
+      style_cyan <- "font-size:12px; font-family:Inter,sans-serif; color:#56CCF2; margin-bottom:6px;"
+      style_grey <- "font-size:12px; font-family:Inter,sans-serif; color:#BFC7D5; margin-bottom:6px;"
+      
+      if (length(sel_row) > 0) {
+        # User clicked a row
+        tags$p(paste0("Showing communications sent by ", gsub("-Agent$","",agent),
+                      " — click a different row to change."),
+               style = style_cyan)
+      } else if (agent_type != "All") {
+        # Dropdown agent type selected
+        tags$p(paste0("Showing communications sent by ", gsub("-Agent$","",agent),
+                      " — change Agent Type or click a row to switch."),
+               style = style_cyan)
       } else {
-        top_agent <- metrics$Agent[1]
-        tags$p(
-          paste0("Showing communications for top agent: ", top_agent,
-                 " — click any row in the table on the left to filter by that agent."),
-          style = "font-size:12px; font-family:Inter,sans-serif; color:#BFC7D5; margin-bottom:6px;"
-        )
+        # Default: top agent for selected metric + time period
+        period_label <- if (time_period == "Entire Investigation") "the full investigation" else time_period
+        tags$p(paste0("Showing communications sent by the top ", metric, " agent in ",
+                      period_label, ": ", gsub("-Agent$","",agent),
+                      " — click any row in the table to switch."),
+               style = style_grey)
       }
     })
     
     output$supporting_records <- renderDT({
-      metrics <- filtered_metrics()
-      sel_row <- input$centrality_table_rows_selected
+      selected_agent <- selected_support_agent()
+      req(!is.null(selected_agent))
       
-      # use clicked agent, or default to top agent by selected metric
-      if (length(sel_row) > 0 && nrow(metrics) >= sel_row) {
-        selected_agent <- metrics$Agent[sel_row]
-      } else {
-        selected_agent <- metrics$Agent[1]
+      # Show all communications sent by the selected agent in the selected time period
+      records <- communications_tbl[communications_tbl$agent_label == selected_agent, ]
+      
+      if (input$time_period != "Entire Investigation") {
+        records <- records[records$period == input$time_period, ]
       }
       
-      records <- filtered_edges()
-      records <- records[records$from == selected_agent | records$to == selected_agent, ]
       records <- records[order(-as.numeric(records$timestamp)), ]
       
+      if (nrow(records) == 0) {
+        font_js_empty <- "
+          function() {
+            var wrapper = this.api().table().container();
+            wrapper.querySelectorAll('*').forEach(function(el) {
+              el.style.setProperty('font-size', '10px', 'important');
+              el.style.setProperty('font-family', 'Inter, sans-serif', 'important');
+            });
+          }
+        "
+        return(datatable(
+          data.frame(Timestamp = character(), From = character(),
+                     To = character(), `Message Type` = character(),
+                     check.names = FALSE),
+          rownames = FALSE,
+          options  = list(pageLength = 5, dom = "tip", drawCallback = JS(font_js_empty))
+        ))
+      }
+      
+      # Build To column from reply lookup
+      records$to_agent <- NA_character_
+      replied <- !is.na(records$responding_to)
+      if (any(replied)) {
+        matched <- lookup[match(records$responding_to[replied], lookup$responding_to), "replied_to_agent"]
+        records$to_agent[replied] <- matched
+      }
+      
       records <- data.frame(
-        Timestamp    = format(as.POSIXct(records$timestamp, tz = "UTC"), "%Y-%m-%d %H:%M"),
-        From         = records$from,
-        To           = records$to,
-        Channel      = records$channel,
+        Timestamp      = format(records$timestamp, "%Y-%m-%d %H:%M"),
+        From           = records$agent_label,
+        To             = ifelse(is.na(records$to_agent), "Unknown", records$to_agent),
         `Message Type` = records$message_type,
-        check.names  = FALSE
+        check.names    = FALSE
       )
       
       font_js <- "
@@ -1328,41 +1447,19 @@ networkServer <- function(id) {
     
     # ── Pre vs Post main interpretation banner ─────────────────────────
     output$pp_main_interpretation <- renderUI({
-      pre_m    <- calculate_metrics(pre_edges_data())
-      post_m   <- calculate_metrics(post_edges_data())
-      pre_k    <- compute_net_kpis(pre_edges_data())
-      post_k   <- compute_net_kpis(post_edges_data())
       agent_type <- input$pp_agent_type
       
-      new_agents <- gsub("-Agent$", "", setdiff(post_m$Agent, pre_m$Agent))
-      top_btw    <- if (nrow(post_m) > 0) gsub("-Agent$", "", post_m$Agent[which.max(post_m$Betweenness)]) else "unknown"
-      top_deg    <- if (nrow(post_m) > 0) gsub("-Agent$", "", post_m$Agent[which.max(post_m$Degree)])      else "unknown"
-      cohesion   <- if (post_k$density < pre_k$density) "reducing overall network cohesion" else "increasing overall network cohesion"
-      new_part   <- if (length(new_agents) > 0)
-        paste0("introducing new participants (", paste(new_agents, collapse = ", "), ")")
-      else "activating agents across all roles"
-      
-      insight <- if (agent_type == "All") {
-        paste0(
-          "The embargo fundamentally reshaped communication patterns, ", new_part,
-          " while shifting ", top_btw, " into the central coordination role and ", cohesion, "."
-        )
-      } else {
-        agent_label <- switch(agent_type,
-                              "intern"         = "Intern",
-                              "judge"          = "Judge",
-                              "legal"          = "Legal",
-                              "platform_trust" = "Platform Trust",
-                              "pr"             = "PR",
-                              "pr_intern"      = "PR Intern",
-                              "social_media"   = "Social Manager",
-                              agent_type
-        )
-        paste0(
-          "Filtering to ", agent_label, "-connected communications, the embargo still drove notable change: ",
-          new_part, ", with ", top_btw, " acting as the primary bridge and ", cohesion, "."
-        )
-      }
+      insight <- switch(agent_type,
+                        "All"            = "The embargo fundamentally reconfigured organisational communication, transforming a compact operational network into a larger crisis-response network with redistributed coordination responsibilities and increased communication activity.",
+                        "intern"         = "Intern only appeared after the embargo yet quickly became an active communication hub, highlighting rapid mobilisation during the crisis response.",
+                        "judge"          = "Judge entered the network only after the embargo, indicating the escalation of governance and decision-making activities during the incident.",
+                        "legal"          = "Legal emerged as the primary coordination hub after the embargo, reflecting its expanded responsibility for managing regulatory and crisis-related communications.",
+                        "platform_trust" = "Platform-Trust remained a consistently influential participant, but its communication expanded beyond operational discussions to support crisis coordination.",
+                        "pr"             = "PR shifted from routine messaging to crisis coordination, becoming substantially more central once the embargo was imposed.",
+                        "pr_intern"      = "PR-Intern joined the communication network only after the embargo, supporting PR activities as communication demands increased during the crisis response.",
+                        "social_media"   = "Social-Manager maintained broad connectivity throughout the investigation while expanding its communication network after the embargo, reflecting its increased role in coordinating public-facing activities.",
+                        "The embargo fundamentally reconfigured organisational communication, transforming a compact operational network into a larger crisis-response network with redistributed coordination responsibilities and increased communication activity."
+      )
       
       div(style = "background:#0f1f3d; border-left:3px solid #56CCF2;
                    border-radius:4px; padding:6px 14px; margin-bottom:2px;",
