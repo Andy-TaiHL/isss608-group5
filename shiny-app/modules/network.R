@@ -161,6 +161,36 @@ networkUI <- function(id) {
           pointer-events: none !important;
         }
         .bslib-sidebar-layout > .sidebar .form-control { font-size: 12px !important; padding: 4px 8px !important; height: 30px !important; }
+        /* Restore dropdown arrow on select elements - override Bootstrap 5 */
+        select, select.form-control, select.form-select,
+        .shiny-input-container select {
+          -webkit-appearance: menulist !important;
+          -moz-appearance: menulist !important;
+          appearance: menulist !important;
+          background-image: none !important;
+        }
+        /* Arrow for ALL selectize inputs (sidebar already has its own) */
+        .shiny-input-container .selectize-control {
+          position: relative !important;
+        }
+        .shiny-input-container .selectize-control::after {
+          content: '' !important;
+          position: absolute !important;
+          right: 10px !important;
+          top: 50% !important;
+          transform: translateY(-50%) !important;
+          width: 0 !important;
+          height: 0 !important;
+          border-left: 5px solid transparent !important;
+          border-right: 5px solid transparent !important;
+          border-top: 6px solid #64748b !important;
+          pointer-events: none !important;
+          display: block !important;
+          z-index: 10 !important;
+        }
+        .shiny-input-container .selectize-input {
+          padding-right: 26px !important;
+        }
         .bslib-sidebar-layout > .sidebar .checkbox label { font-size: 12px !important; }
         .bslib-sidebar-layout > .sidebar .sidebar-title { font-size: 14px !important; }
         .bslib-sidebar-layout > .sidebar .form-group { margin-bottom: 8px !important; }
@@ -386,6 +416,8 @@ networkUI <- function(id) {
         var hrObserver = new MutationObserver(removeSidebarHR);
         hrObserver.observe(document.body, { childList: true, subtree: true });
 
+        // No JS needed - arrow handled via CSS on .selectize-control
+
         var observer = new MutationObserver(function(mutations) {
           mutations.forEach(function(m) {
             if (m.target.classList && m.target.classList.contains('vis-tooltip')) {
@@ -415,14 +447,14 @@ networkUI <- function(id) {
                        style = "color:#BFC7D5; font-size:13px; font-family:Inter,sans-serif;
                                 font-weight:600; white-space:nowrap; margin:0;"),
             div(style = "width:140px; margin-bottom:-15px;",
-                selectInput(ns("sel_node_id"), NULL,
-                            choices  = c("(all agents)" = "",
-                                         setNames(
-                                           sort(unique(c(reply_edges$from, reply_edges$to))),
-                                           gsub("-Agent$", "", sort(unique(c(reply_edges$from, reply_edges$to))))
-                                         )),
-                            selected = "",
-                            width    = "100%"
+                selectizeInput(ns("sel_node_id"), NULL,
+                               choices  = c("(all agents)" = "",
+                                            setNames(
+                                              sort(unique(c(reply_edges$from, reply_edges$to))),
+                                              gsub("-Agent$", "", sort(unique(c(reply_edges$from, reply_edges$to))))
+                                            )),
+                               selected = "",
+                               options  = list(placeholder = "(all agents)")
                 )
             ),
             tags$button("Reset", id = ns("reset_selection"),
@@ -1064,8 +1096,8 @@ networkServer <- function(id) {
                 if (rowData[0] === agentLabel) {
                   var rowNode = this.node();
                   Array.from(rowNode.cells).forEach(function(cell) {
-                    cell.style.setProperty('background-color', '#56CCF2', 'important');
-                    cell.style.setProperty('color', '#0a1628', 'important');
+                    cell.style.setProperty('background-color', '#DBEAFE', 'important');
+                    cell.style.setProperty('color', '#1e293b', 'important');
                     cell.style.setProperty('font-weight', 'bold', 'important');
                   });
                 }
