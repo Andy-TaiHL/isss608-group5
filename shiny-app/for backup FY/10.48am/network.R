@@ -9,7 +9,6 @@ library(jsonlite)
 library(igraph)
 library(DT)
 library(visNetwork)
-library(httr)
 
 # =========================
 # Data preparation
@@ -141,7 +140,7 @@ networkUI <- function(id) {
       
       tags$style(HTML("
         /* Sidebar font sizes */
-        .bslib-sidebar-layout > .sidebar { font-size: 13px !important; }
+        .bslib-sidebar-layout > .sidebar { font-size: 13px !important; border-right: 1px solid #ffffff !important; }
         .bslib-sidebar-layout > .sidebar .control-label { font-size: 12px !important; margin-bottom: 3px !important; }
         .bslib-sidebar-layout > .sidebar .selectize-input { font-size: 12px !important; min-height: 30px !important; padding: 4px 28px 4px 8px !important; position: relative !important; }
         .bslib-sidebar-layout > .sidebar .selectize-input::after {
@@ -161,10 +160,7 @@ networkUI <- function(id) {
         .bslib-sidebar-layout > .sidebar .checkbox label { font-size: 12px !important; }
         .bslib-sidebar-layout > .sidebar .sidebar-title { font-size: 14px !important; }
         .bslib-sidebar-layout > .sidebar .form-group { margin-bottom: 8px !important; }
-        .bslib-sidebar-layout > .sidebar hr,
-        .bslib-sidebar-layout .sidebar hr,
-        .sidebar hr,
-        aside hr { display: none !important; }
+        .bslib-sidebar-layout > .sidebar hr { margin: 8px 0 !important; }
         /* Fix dateRangeInput: linked boxes, uniform height, flush 'to' separator */
         .bslib-sidebar-layout > .sidebar .input-daterange {
           display: flex !important;
@@ -204,7 +200,9 @@ networkUI <- function(id) {
       ")),
       
       tags$label(
-        "Centrality Metric",
+        "Centrality Metric ",
+        tags$span("(depicts node size)",
+                  style = "font-size:10px; color:#BFC7D5; font-weight:normal;"),
         style = "font-size:12px; margin-bottom:0; margin-top:4px; display:block;"
       ),
       div(style = "margin-top:-10px;",
@@ -218,15 +216,10 @@ networkUI <- function(id) {
                   selected = "Entire Investigation"),
       
       selectInput(ns("agent_type"), "Agent Type",
-                  choices  = c("All",
-                               "Intern"          = "intern",
-                               "Judge"           = "judge",
-                               "Legal"           = "legal",
-                               "Platform Trust"  = "platform_trust",
-                               "PR"              = "pr",
-                               "PR Intern"       = "pr_intern",
-                               "Social Manager"  = "social_media"),
+                  choices  = c("All", unique(communications_tbl$agent_role)),
                   selected = "All"),
+      
+      hr(),
       
       checkboxInput(ns("show_labels"),    "Show Node Labels",  value = TRUE),
       checkboxInput(ns("highlight_hubs"), "Highlight Key Hubs", value = TRUE)
@@ -235,9 +228,7 @@ networkUI <- function(id) {
     tags$style(HTML("
       .nav-tabs .nav-link.active { background-color: #163D77 !important; color: white !important; }
       .nav-tabs .nav-link        { color: #2F80ED !important; }
-      /* Sidebar right border (visible on Network Graph and Centrality Table tabs) */
-      .bslib-sidebar-layout > .sidebar { border-right: 1px solid rgba(255,255,255,0.2) !important; }
-      /* Hide sidebar, toggle AND resize handle on Pre vs Post Embargo tab */
+      /* Hide sidebar and its toggle arrow on Pre vs Post Embargo tab */
       body.pp-tab-active .bslib-sidebar-layout > .sidebar,
       body.pp-tab-active .bslib-sidebar-toggle,
       body.pp-tab-active .collapse-toggle,
@@ -245,10 +236,7 @@ networkUI <- function(id) {
       body.pp-tab-active button[aria-label*='sidebar'],
       body.pp-tab-active button[aria-label*='Sidebar'],
       body.pp-tab-active button[aria-label*='collapse'],
-      body.pp-tab-active button[aria-label*='Collapse'],
-      body.pp-tab-active .bslib-sidebar-layout > .sidebar-resizer,
-      body.pp-tab-active [class*='resizer'],
-      body.pp-tab-active [class*='resize-handle'] {
+      body.pp-tab-active button[aria-label*='Collapse'] {
         display: none !important;
       }
       body.pp-tab-active .bslib-sidebar-layout > .main {
@@ -314,15 +302,6 @@ networkUI <- function(id) {
         padding: 2px 5px !important;
         min-width: 20px !important;
       }
-      /* Suppress default margins inside pp tab flex column */
-      #network-pp_main_interpretation,
-      #network-pp_kpis {
-        margin: 0 !important;
-      }
-      #network-pp_main_interpretation > *,
-      #network-pp_kpis > * {
-        margin-bottom: 0 !important;
-      }
       #network-network_graph .vis-tooltip {
         background-color: #1a2a45 !important;
         color: white !important;
@@ -373,16 +352,6 @@ networkUI <- function(id) {
       });
 
       $(document).ready(function() {
-        // Permanently remove bslib-injected HR from sidebar using MutationObserver
-        function removeSidebarHR() {
-          document.querySelectorAll('.bslib-sidebar-layout hr, .sidebar hr, aside hr').forEach(function(el) {
-            el.parentNode.removeChild(el);
-          });
-        }
-        removeSidebarHR();
-        var hrObserver = new MutationObserver(removeSidebarHR);
-        hrObserver.observe(document.body, { childList: true, subtree: true });
-
         var observer = new MutationObserver(function(mutations) {
           mutations.forEach(function(m) {
             if (m.target.classList && m.target.classList.contains('vis-tooltip')) {
@@ -460,15 +429,6 @@ networkUI <- function(id) {
                 color: #0a1628 !important;
                 box-shadow: none !important;
               }
-              /* Centrality table row selection */
-              #network-centrality_table tr.selected td,
-              #network-centrality_table tr.selected td:hover,
-              #network-centrality_table_wrapper table tbody tr.selected td,
-              #network-centrality_table_wrapper table tbody tr.selected > td {
-                background-color: #56CCF2 !important;
-                color: #0a1628 !important;
-                box-shadow: none !important;
-              }
               #network-edge_preview_wrapper .dataTables_paginate,
               #network-edge_preview_wrapper .dataTables_paginate * {
                 font-size: 10px !important;
@@ -485,29 +445,71 @@ networkUI <- function(id) {
       ),  # end nav_panel Network Graph
       
       nav_panel(
-        "Centrality Table",
+        "Pre vs Post Embargo",
         
-        tags$style(HTML("
-          #network-ct_summary_bar, #network-ct_interpretation {
-            margin-bottom: 0 !important;
-            margin-top: 0 !important;
-          }
-          #network-ct_summary_bar > *, #network-ct_interpretation > * {
-            margin-bottom: 0 !important;
-          }
-        ")),
-        # Full-width interpretation panel
-        uiOutput(ns("ct_interpretation")),
+        # ── Agent Type selector (inline — only control that affects this tab) ──
+        div(style="display:flex; align-items:center; gap:12px; margin-bottom:10px; margin-top:8px;",
+            tags$label("Agent Type:",
+                       style="color:#BFC7D5;font-size:12px;font-family:Inter,sans-serif;
+                   font-weight:600;white-space:nowrap;margin:0;"),
+            selectInput(ns("pp_agent_type"), NULL,
+                        choices  = c("All", unique(communications_tbl$agent_role)),
+                        selected = "All", width = "180px")
+        ),
         
-        div(style = "display:flex; gap:16px; align-items:flex-start; padding:2px 0 0 0;
-                     overflow:hidden;",
+        # ── KPI Cards ────────────────────────────────────────────────
+        uiOutput(ns("pp_kpis")),
+        
+        # ── Networks (left 2/3) + Observations (right 1/3) ───────────
+        div(style = "display:flex; gap:12px; margin-top:10px; align-items:flex-start;",
             
-            # Left column: centrality table
-            div(style = "flex:1 1 0; min-width:0; overflow:hidden;",
-                DTOutput(ns("centrality_table"))
+            # PRE network
+            div(style = "flex:1; min-width:0;",
+                tags$p("PRE  (Before 23 May 2046)",
+                       style = "color:#56CCF2; font-size:11px; font-family:Inter,sans-serif;
+                       font-weight:700; text-align:center; margin:0 0 3px 0;"),
+                div(style = "width:100%; height:260px; overflow:hidden; pointer-events:auto;",
+                    visNetworkOutput(ns("pp_pre_net"), height = "260px")
+                )
             ),
             
-            # Right column: supporting records
+            # POST network
+            div(style = "flex:1; min-width:0;",
+                tags$p("POST  (After 23 May 2046)",
+                       style = "color:#F2994A; font-size:11px; font-family:Inter,sans-serif;
+                       font-weight:700; text-align:center; margin:0 0 3px 0;"),
+                div(style = "width:100%; height:260px; overflow:hidden; pointer-events:auto;",
+                    visNetworkOutput(ns("pp_post_net"), height = "260px")
+                )
+            ),
+            
+            # Observations
+            div(style = "flex:1; min-width:0;",
+                tags$p("Overall Observations",
+                       style = "color:white; font-size:12px; font-family:Inter,sans-serif;
+                       font-weight:600; margin:0 0 6px 0;"),
+                uiOutput(ns("pp_observations"))
+            )
+        )
+      ),
+      
+      nav_panel(
+        "Centrality Table",
+        
+        div(style = "display:flex; gap:16px; align-items:flex-start; padding:4px 0;
+                     overflow:hidden;",
+            
+            # Left column: KPI cards + centrality table
+            div(style = "flex:1 1 0; min-width:0; overflow:hidden;",
+                uiOutput(ns("kpi_cards")),
+                div(style = "margin-top:10px;",
+                    DTOutput(ns("centrality_table"))
+                )
+            ),
+            
+            # (divider removed)
+            
+            # Right column: supporting records starting from top
             div(style = "flex:1 1 0; min-width:0; overflow:hidden;",
                 tags$p("Supporting Communication Records",
                        style = "font-size:14px; font-family:Inter,sans-serif; font-weight:600;
@@ -516,75 +518,10 @@ networkUI <- function(id) {
                 DTOutput(ns("supporting_records"))
             )
         )
-      ),
-      
-      nav_panel(
-        "Pre vs Post Embargo",
-        
-        div(style = "display:flex; flex-direction:column; gap:10px; padding-top:8px;",
-            
-            # ── Main interpretation banner ──────────────────────────────
-            uiOutput(ns("pp_main_interpretation")),
-            
-            # ── Agent Type selector ─────────────────────────────────────
-            div(style="display:flex; align-items:center; gap:12px;",
-                tags$label("Agent Type:",
-                           style="color:#BFC7D5;font-size:12px;font-family:Inter,sans-serif;
-                     font-weight:600;white-space:nowrap;margin:0;"),
-                selectInput(ns("pp_agent_type"), NULL,
-                            choices  = c("All",
-                                         "Intern"         = "intern",
-                                         "Judge"          = "judge",
-                                         "Legal"          = "legal",
-                                         "Platform Trust" = "platform_trust",
-                                         "PR"             = "pr",
-                                         "PR Intern"      = "pr_intern",
-                                         "Social Manager" = "social_media"),
-                            selected = "All", width = "180px"),
-                tags$span("Node size = Degree centrality",
-                          style = "color:#7A8FA6; font-size:11px; font-family:Inter,sans-serif;
-                                 font-style:italic;")
-            ),
-            
-            # ── KPI Cards ──────────────────────────────────────────────
-            uiOutput(ns("pp_kpis")),
-            
-            # ── Networks + Observations ─────────────────────────────────
-            div(style = "display:flex; gap:8px; align-items:flex-start;",
-                
-                # PRE network
-                div(style = "flex:1; min-width:0;",
-                    tags$p("PRE-EMBARGO  (Before 23 May 2046)",
-                           style = "color:#56CCF2; font-size:11px; font-family:Inter,sans-serif;
-                       font-weight:700; text-align:center; margin:0 0 2px 0;"),
-                    div(style = "width:100%; height:270px; overflow:hidden; pointer-events:auto;",
-                        visNetworkOutput(ns("pp_pre_net"), height = "270px")
-                    )
-                ),
-                
-                # POST network
-                div(style = "flex:1; min-width:0;",
-                    tags$p("POST-EMBARGO  (After 23 May 2046)",
-                           style = "color:#F2994A; font-size:11px; font-family:Inter,sans-serif;
-                       font-weight:700; text-align:center; margin:0 0 2px 0;"),
-                    div(style = "width:100%; height:270px; overflow:hidden; pointer-events:auto;",
-                        visNetworkOutput(ns("pp_post_net"), height = "270px")
-                    )
-                ),
-                
-                # Observations
-                div(style = "flex:1; min-width:0;",
-                    tags$p("Overall Observations",
-                           style = "color:white; font-size:12px; font-family:Inter,sans-serif;
-                       font-weight:600; margin:0 0 6px 0;"),
-                    uiOutput(ns("pp_observations"))
-                )
-            )  # end networks flex
-        )  # end outer flex column
-      )  # end nav_panel Pre vs Post Embargo
-    )  # end navset_tab
-  )  # end layout_sidebar
-}  # end networkUI
+      )
+    )
+  )
+}
 
 # =========================
 # Server
@@ -717,8 +654,8 @@ networkServer <- function(id) {
     # ── Selection summary bar ──────────────────────────────────────────
     output$selection_summary <- renderUI({
       metric      <- input$centrality_metric %||% "Betweenness"
-      time_period <- input$time_period %||% "Entire Investigation"
-      agent_type  <- input$agent_type  %||% "All"
+      time_period <- input$time_period       %||% "Entire Investigation"
+      agent_type  <- input$agent_type        %||% "All"
       
       div(style = "display:inline-flex; gap:12px; align-items:center;
                    padding:3px 10px;
@@ -796,130 +733,7 @@ networkServer <- function(id) {
     }, ignoreInit = TRUE)
     
     
-    # ── Centrality Table summary bar ───────────────────────────────────
-    output$ct_summary_bar <- renderUI({
-      metric      <- input$centrality_metric %||% "Betweenness"
-      time_period <- input$time_period       %||% "Entire Investigation"
-      agent_type  <- input$agent_type        %||% "All"
-      
-      agent_label <- switch(agent_type,
-                            "intern"         = "Intern",
-                            "judge"          = "Judge",
-                            "legal"          = "Legal",
-                            "platform_trust" = "Platform Trust",
-                            "pr"             = "PR",
-                            "pr_intern"      = "PR Intern",
-                            "social_media"   = "Social Manager",
-                            agent_type
-      )
-      
-      div(style = "display:inline-flex; gap:12px; align-items:center;
-                   padding:3px 10px;
-                   background:#0f2035; border-radius:4px;
-                   border:1px solid #1e3a5f; font-family:Inter,sans-serif;
-                   width:fit-content; white-space:nowrap;",
-          tags$span(
-            tags$span("Centrality Metric: ", style = "color:#7A8FA6; font-size:13px;"),
-            tags$span(metric, style = "color:#56CCF2; font-size:13px; font-weight:600;")
-          ),
-          tags$span(style = "color:#2a4a6b;", "|"),
-          tags$span(
-            tags$span("Time Period: ", style = "color:#7A8FA6; font-size:13px;"),
-            tags$span(time_period, style = "color:#56CCF2; font-size:13px; font-weight:600;")
-          ),
-          tags$span(style = "color:#2a4a6b;", "|"),
-          tags$span(
-            tags$span("Agent Type: ", style = "color:#7A8FA6; font-size:13px;"),
-            tags$span(agent_label, style = "color:#56CCF2; font-size:13px; font-weight:600;")
-          )
-      )
-    })
-    
-    # ── Centrality Table interpretation — rule-based summary ──────────
-    output$ct_interpretation <- renderUI({
-      metrics     <- filtered_metrics()
-      time_period <- input$time_period
-      agent_type  <- input$agent_type
-      metric      <- input$centrality_metric
-      if (nrow(metrics) == 0) return(NULL)
-      
-      m <- metrics
-      m$Agent <- gsub("-Agent$", "", m$Agent)
-      
-      # Sort by selected metric to get correct top agent
-      m <- m[order(-m[[metric]]), ]
-      
-      top_btwn <- m$Agent[which.max(m$Betweenness)]
-      top_deg  <- m$Agent[which.max(m$Degree)]
-      top_eig  <- m$Agent[which.max(m$Eigenvector)]
-      top_met  <- m$Agent[1]   # top for currently selected metric
-      
-      val_btwn <- max(m$Betweenness, na.rm = TRUE)
-      val_deg  <- max(m$Degree,      na.rm = TRUE)
-      val_eig  <- round(max(m$Eigenvector, na.rm = TRUE), 2)
-      val_met  <- m[[metric]][1]
-      
-      # Metric-specific labels and sentences
-      metric_label <- switch(metric,
-                             Betweenness  = "Primary Bridge",
-                             Degree       = "Most Connected",
-                             Closeness    = "Most Reachable",
-                             Eigenvector  = "Most Influential"
-      )
-      metric_sentence <- switch(metric,
-                                Betweenness = paste0(top_met, " (Betweenness = ", val_btwn, ") served as the main intermediary connecting communication paths and is a key candidate for tracing information flow."),
-                                Degree      = paste0(top_met, " (Degree = ", val_deg, ") interacted directly with the largest number of agents, indicating a strong coordination role."),
-                                Closeness   = paste0(top_met, " (Closeness = ", round(val_met,2), ") can reach all other agents most efficiently, making it a fast information disseminator."),
-                                Eigenvector = paste0(top_met, " (Eigenvector = ", val_eig, ") was closely connected to other influential agents, suggesting strategic involvement within the communication network.")
-      )
-      
-      # Period context
-      period_note <- switch(time_period,
-                            "Pre-Embargo"          = "During normal pre-embargo operations, communication patterns reflect routine coordination.",
-                            "Embargo\u2192Leak"    = "With the embargo active, communication intensified as agents coordinated around information control.",
-                            "Post-Leak"            = "Following the @Elena leak, agents shifted focus to damage control and crisis response.",
-                            "Crisis Day"           = "On the crisis day (5 Jun), communication was at its most concentrated as the formal breach unfolded.",
-                            "Entire Investigation" = "Across the full investigation period, patterns reflect both routine and crisis-driven communication."
-      )
-      
-      # Decide which bullets to show:
-      # If only metric changed (time = Entire Investigation, agent = All) → show only selected metric bullet
-      # Otherwise → show all three bullets
-      only_metric <- (time_period == "Entire Investigation" && agent_type == "All")
-      
-      bullet <- function(label, text) {
-        tags$p(
-          tags$span("\u25C6 ", style = "color:#56CCF2; font-weight:bold;"),
-          tags$span(paste0(label, ": "), style = "color:#E2E8F0; font-weight:bold; font-size:12px;"),
-          tags$span(text, style = "color:#E2E8F0; font-size:12px; font-family:Inter,sans-serif;"),
-          style = "margin:0 0 8px 0; line-height:1.6; font-family:Inter,sans-serif;"
-        )
-      }
-      
-      bullets <- if (only_metric) {
-        list(bullet(metric_label, metric_sentence))
-      } else {
-        list(
-          bullet("Primary Bridge",   paste0(top_btwn, " (Betweenness = ", val_btwn, ") served as the main intermediary connecting communication paths and is a key candidate for tracing information flow.")),
-          bullet("Most Connected",   paste0(top_deg,  " (Degree = ", val_deg, ") interacted directly with the largest number of agents, indicating a coordination role.")),
-          bullet("Most Influential", paste0(top_eig,  " (Eigenvector = ", val_eig, ") was closely connected to other influential agents, suggesting strategic involvement within the communication network."))
-        )
-      }
-      
-      div(style = "background:#0f1f3d; border-left:3px solid #56CCF2;
-                   border-radius:4px; padding:8px 14px; margin-bottom:0;",
-          tags$p("Centrality Table Interpretation",
-                 style = "color:#56CCF2; font-size:11px; font-weight:700;
-                          font-family:Inter,sans-serif; margin:0 0 8px 0;
-                          text-transform:uppercase; letter-spacing:0.06em;"),
-          tags$p(period_note,
-                 style = "color:#7A8FA6; font-size:11px; font-family:Inter,sans-serif;
-                          margin:0 0 8px 0; font-style:italic;"),
-          tagList(bullets)
-      )
-    })
-    
-    # ── KPI cards (unused — replaced by ct_interpretation) ────────────
+    # KPI cards: top agent per centrality metric
     output$kpi_cards <- renderUI({
       metrics <- filtered_metrics()
       if (nrow(metrics) == 0) return(NULL)
@@ -973,64 +787,39 @@ networkServer <- function(id) {
       # JS drawCallback: runs 50ms after draw.dt handler has reset all colors,
       # then uses setProperty('important') to force orange on the max-value cell
       # — inline !important beats any stylesheet !important rule
-      # Only highlight column when on Entire Investigation + All (i.e. default state)
-      # When time_period or agent_type is filtered, skip all cell highlighting
-      time_period <- input$time_period
-      agent_type  <- input$agent_type
-      do_highlight <- (time_period == "Entire Investigation" && agent_type == "All")
-      
       draw_js <- sprintf("
         function() {
           var api = this.api();
           var colIdx = %d;
-          var doHighlight = %s;
           setTimeout(function() {
+            // force 8.5px font on all cells, headers, pagination, and info
             var wrapper = api.table().container();
-            wrapper.querySelectorAll('*').forEach(function(el) {
+            var allEls = wrapper.querySelectorAll('*');
+            allEls.forEach(function(el) {
               el.style.setProperty('font-size', '12px', 'important');
               el.style.setProperty('font-family', 'Inter, sans-serif', 'important');
             });
-            // reset all metric columns
-            [1,2,3,4].forEach(function(ci) {
-              api.column(ci).nodes().each(function(cell) {
-                cell.style.setProperty('background-color', 'transparent', 'important');
-                cell.style.setProperty('color', '#1e293b', 'important');
-                cell.style.setProperty('font-weight', 'normal', 'important');
-              });
+            // reset metric column to normal first
+            api.column(colIdx).nodes().each(function(cell) {
+              cell.style.setProperty('background-color', 'transparent', 'important');
+              cell.style.setProperty('color', '#1e293b', 'important');
+              cell.style.setProperty('font-weight', 'normal', 'important');
             });
-            // clear inline bg/color on ALL rows first, then re-apply to selected only
-            api.rows().nodes().each(function(row) {
-              Array.from(row.cells).forEach(function(cell) {
-                cell.style.removeProperty('background-color');
-                cell.style.removeProperty('color');
-              });
-            });
-            // re-apply column highlight after clear
-            if (doHighlight) {
-              api.column(colIdx).nodes().each(function(cell) {
-                cell.style.setProperty('background-color', '#DBEAFE', 'important');
-                cell.style.setProperty('color', '#1e293b', 'important');
-              });
-              var maxCell = api.cell(0, colIdx).node();
-              if (maxCell) {
-                maxCell.style.setProperty('font-weight', 'bold', 'important');
-              }
+            // highlight only the max-value cell (always row 0, sorted desc)
+            var maxCell = api.cell(0, colIdx).node();
+            if (maxCell) {
+              maxCell.style.setProperty('background-color', '#2F80ED', 'important');
+              maxCell.style.setProperty('color', '#000000', 'important');
+              maxCell.style.setProperty('font-weight', 'bold', 'important');
             }
-            // apply selection colour to currently selected row only
-            api.rows('.selected').nodes().each(function(row) {
-              Array.from(row.cells).forEach(function(cell) {
-                cell.style.setProperty('background-color', '#56CCF2', 'important');
-                cell.style.setProperty('color', '#0a1628', 'important');
-              });
-            });
           }, 50);
         }
-      ", metric_col_idx, tolower(as.character(do_highlight)))
+      ", metric_col_idx)
       
       datatable(
         table_data,
         rownames  = FALSE,
-        selection = list(mode = "single", target = "row"),
+        selection = "single",
         options   = list(
           pageLength   = 10,
           dom          = "tip",
@@ -1043,17 +832,7 @@ networkServer <- function(id) {
             list(width = "18%", targets = 3),
             list(width = "18%", targets = 4)
           ),
-          drawCallback = JS(draw_js),
-          rowCallback  = JS("
-            function(row, data, index) {
-              $(row).on('click', function() {
-                setTimeout(function() {
-                  // trigger a draw so drawCallback re-runs and clears stale highlights
-                  $(row).closest('table').DataTable().draw(false);
-                }, 20);
-              });
-            }
-          ")
+          drawCallback = JS(draw_js)
         )
       )
     })
@@ -1193,7 +972,7 @@ networkServer <- function(id) {
         function() {
           var wrapper = this.api().table().container();
           wrapper.querySelectorAll('*').forEach(function(el) {
-            el.style.setProperty('font-size', '10px', 'important');
+            el.style.setProperty('font-size', '12px', 'important');
             el.style.setProperty('font-family', 'Inter, sans-serif', 'important');
           });
         }
@@ -1203,7 +982,7 @@ networkServer <- function(id) {
         records,
         rownames = FALSE,
         options  = list(
-          pageLength   = 5,
+          pageLength   = 7,
           dom          = "tip",
           drawCallback = JS(font_js)
         )
@@ -1271,18 +1050,18 @@ networkServer <- function(id) {
         acol  <- if (delta>0) "#27AE60" else if (delta<0) "#E74C3C" else "#BFC7D5"
         ptxt  <- paste0(arrow," ",pct,"%")
       }
-      div(style="flex:1;background:#0f1f3d;border:1px solid #1e3a5f;border-radius:6px;padding:6px 10px;",
-          tags$p(label, style="color:#56CCF2;font-size:10px;font-family:Inter,sans-serif;
+      div(style="flex:1;background:#0f1f3d;border:1px solid #1e3a5f;border-radius:6px;padding:8px 12px;",
+          tags$p(label, style="color:#56CCF2;font-size:9px;font-family:Inter,sans-serif;
                               font-weight:700;text-transform:uppercase;letter-spacing:0.06em;
-                              margin:0 0 4px 0;text-align:center;"),
+                              margin:0 0 6px 0;text-align:center;"),
           div(style="display:flex;justify-content:space-around;align-items:center;",
               div(style="text-align:center;",
-                  tags$p("PRE",style="color:#BFC7D5;font-size:10px;font-family:Inter,sans-serif;margin:0;"),
-                  tags$p(as.character(pre),style="color:white;font-size:15px;font-family:Inter,sans-serif;font-weight:700;margin:0;")),
+                  tags$p("PRE",style="color:#BFC7D5;font-size:9px;font-family:Inter,sans-serif;margin:0;"),
+                  tags$p(as.character(pre),style="color:white;font-size:16px;font-family:Inter,sans-serif;font-weight:700;margin:0;")),
               tags$p(ptxt,style=paste0("color:",acol,";font-size:12px;font-family:Inter,sans-serif;font-weight:700;margin:0;")),
               div(style="text-align:center;",
-                  tags$p("POST",style="color:#BFC7D5;font-size:10px;font-family:Inter,sans-serif;margin:0;"),
-                  tags$p(as.character(post),style="color:white;font-size:15px;font-family:Inter,sans-serif;font-weight:700;margin:0;"))
+                  tags$p("POST",style="color:#BFC7D5;font-size:9px;font-family:Inter,sans-serif;margin:0;"),
+                  tags$p(as.character(post),style="color:white;font-size:16px;font-family:Inter,sans-serif;font-weight:700;margin:0;"))
           )
       )
     }
@@ -1290,7 +1069,7 @@ networkServer <- function(id) {
     output$pp_kpis <- renderUI({
       pre  <- compute_net_kpis(pre_edges_data())
       post <- compute_net_kpis(post_edges_data())
-      div(style="display:flex;gap:6px;",
+      div(style="display:flex;gap:10px;",
           pp_kpi_card("Active Agents",   pre$agents,   post$agents),
           pp_kpi_card("Total Messages",  pre$messages, post$messages),
           pp_kpi_card("Network Density", pre$density,  post$density),
@@ -1327,56 +1106,6 @@ networkServer <- function(id) {
     output$pp_pre_net  <- renderVisNetwork(make_pp_net(pre_edges_data(),  "#163D77"))
     output$pp_post_net <- renderVisNetwork(make_pp_net(post_edges_data(), "#C0410A"))
     
-    # ── Pre vs Post main interpretation banner ─────────────────────────
-    output$pp_main_interpretation <- renderUI({
-      pre_m    <- calculate_metrics(pre_edges_data())
-      post_m   <- calculate_metrics(post_edges_data())
-      pre_k    <- compute_net_kpis(pre_edges_data())
-      post_k   <- compute_net_kpis(post_edges_data())
-      agent_type <- input$pp_agent_type
-      
-      new_agents <- gsub("-Agent$", "", setdiff(post_m$Agent, pre_m$Agent))
-      top_btw    <- if (nrow(post_m) > 0) gsub("-Agent$", "", post_m$Agent[which.max(post_m$Betweenness)]) else "unknown"
-      top_deg    <- if (nrow(post_m) > 0) gsub("-Agent$", "", post_m$Agent[which.max(post_m$Degree)])      else "unknown"
-      cohesion   <- if (post_k$density < pre_k$density) "reducing overall network cohesion" else "increasing overall network cohesion"
-      new_part   <- if (length(new_agents) > 0)
-        paste0("introducing new participants (", paste(new_agents, collapse = ", "), ")")
-      else "activating agents across all roles"
-      
-      insight <- if (agent_type == "All") {
-        paste0(
-          "The embargo fundamentally reshaped communication patterns, ", new_part,
-          " while shifting ", top_btw, " into the central coordination role and ", cohesion, "."
-        )
-      } else {
-        agent_label <- switch(agent_type,
-                              "intern"         = "Intern",
-                              "judge"          = "Judge",
-                              "legal"          = "Legal",
-                              "platform_trust" = "Platform Trust",
-                              "pr"             = "PR",
-                              "pr_intern"      = "PR Intern",
-                              "social_media"   = "Social Manager",
-                              agent_type
-        )
-        paste0(
-          "Filtering to ", agent_label, "-connected communications, the embargo still drove notable change: ",
-          new_part, ", with ", top_btw, " acting as the primary bridge and ", cohesion, "."
-        )
-      }
-      
-      div(style = "background:#0f1f3d; border-left:3px solid #56CCF2;
-                   border-radius:4px; padding:6px 14px; margin-bottom:2px;",
-          tags$p("Key Insight",
-                 style = "color:#56CCF2; font-size:11px; font-weight:700;
-                          font-family:Inter,sans-serif; margin:0 0 4px 0;
-                          text-transform:uppercase; letter-spacing:0.06em;"),
-          tags$p(insight,
-                 style = "color:#E2E8F0; font-size:13px; font-family:Inter,sans-serif;
-                          margin:0; line-height:1.6;")
-      )
-    })
-    
     output$pp_observations <- renderUI({
       pre_k  <- compute_net_kpis(pre_edges_data())
       post_k <- compute_net_kpis(post_edges_data())
@@ -1391,7 +1120,7 @@ networkServer <- function(id) {
       }
       
       obs_item <- function(text)
-        tags$li(text, style="color:#BFC7D5;font-size:12px;font-family:Inter,sans-serif;
+        tags$li(text, style="color:#BFC7D5;font-size:11px;font-family:Inter,sans-serif;
                               margin-bottom:6px;line-height:1.5;")
       
       items <- list(
@@ -1441,7 +1170,7 @@ networkServer <- function(id) {
         top_deg_name, " was the most connected agent post-embargo (", top_deg_val, " connections)."))))
       
       div(style="background:#0f1f3d;border:1px solid #1e3a5f;border-radius:8px;
-                 padding:8px 12px; height:255px; overflow-y:auto;",
+                 padding:10px 14px; height:245px; overflow-y:auto;",
           tags$ul(style="margin:0;padding-left:16px;", do.call(tagList, items)))
     })
     
