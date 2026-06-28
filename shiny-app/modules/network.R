@@ -9,7 +9,6 @@ library(jsonlite)
 library(igraph)
 library(DT)
 library(visNetwork)
-library(httr)
 
 # =========================
 # Data preparation
