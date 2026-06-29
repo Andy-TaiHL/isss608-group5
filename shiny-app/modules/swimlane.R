@@ -601,14 +601,6 @@ swimlaneUI <- function(id) {
         options  = list(plugins = list("remove_button"))
       ),
       
-      # ── Timeline ──
-      dateRangeInput(
-        ns("timeline"),
-        "Timeline Range",
-        start = as.Date(min(action_final_tbl$round_hour)),
-        end   = as.Date(max(action_final_tbl$round_hour))
-      ),
-      
       # ── Period ──
       selectInput(
         ns("period"),
@@ -878,12 +870,6 @@ swimlaneServer <- function(id) {
       if (!is.null(input$agents) && !"All Agents" %in% input$agents)
         data <- data %>% filter(agent_label %in% input$agents)
       
-      data <- data %>%
-        filter(
-          as.Date(round_hour) >= input$timeline[1],
-          as.Date(round_hour) <= input$timeline[2]
-        )
-      
       if (!is.null(input$period) && input$period != "All Periods")
         data <- data %>% filter(period == input$period)
       
@@ -1017,7 +1003,6 @@ swimlaneServer <- function(id) {
         score_summary,
         class    = "score-summary-table",
         rownames = FALSE,
-        filter   = "top",
         options  = list(
           pageLength = 20,
           dom        = "tip",
