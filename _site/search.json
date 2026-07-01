@@ -49,17 +49,17 @@
     "text": "Project Schedule"
   },
   {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "VAST Challenge2026",
+    "section": "",
+    "text": "ISSS608 · Visual Analytics & Applications · Group 5\n    VAST Challenge2026\n    Uncovering hidden patterns through interactive visual analytics — built with R Shiny.\n    \n      R Shiny\n      Quarto\n      Visual Analytics\n    \n    \n      Launch Shiny App →\n      Read Proposal\n    \n  \n\n\n\n\n  \n\n    \n      The Challenge\n      \n        As part of VAST Challenge 2026,\n        our team is addressing Mini-Challenge 1 — using visual analytics to comb through TenantThread's internal communications to establish whether they made a deliberate decision to leak the merger information or the system simply broke down under pressure.\n        Our goal is to build an interactive Shiny application that democratises data and empowers\n        analysts to explore, interrogate and communicate findings visually.\n      \n      \n        The project emphasises interactivity, integrating techniques from\n        data analytics and visualisation to surface insights that static reports cannot.\n      \n    \n\n    \n      The Team\n      \n        \n          AT\n          \n            Andy Tai\n            Group Member\n          \n        \n        \n          GF\n          \n            Goh Fangyu\n            Group Member\n          \n        \n        \n          JY\n          \n            Jiang Yuxi\n            Group Member\n          \n        \n      \n    \n\n  \n\n  \n    Key milestones\n    \n      \n        \n        Setup\n        Project setup & proposal\n      \n      \n      \n        \n        10 Jun\n        Proposal published on Vercel\n      \n      \n      \n        \n        1 Jul\n        Poster uploaded on eLearn\n      \n      \n      \n        \n        4 Jul\n        Poster presentation\n      \n      \n      \n        \n        5 Jul\n        Final submission"
+  },
+  {
     "objectID": "about.html",
     "href": "about.html",
     "title": "About",
     "section": "",
     "text": "About this site\n\n1 + 1\n\n[1] 2"
-  },
-  {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "VAST Challenge2026",
-    "section": "",
-    "text": "ISSS608 · Visual Analytics & Applications · Group 5\n    VAST Challenge2026\n    Uncovering hidden patterns through interactive visual analytics — built with R Shiny.\n    \n      R Shiny\n      Quarto\n      Visual Analytics\n    \n  \n\n\n\n\n  \n\n    \n      The Challenge\n      \n        As part of VAST Challenge 2026,\n        our team is addressing Mini-Challenge 1 — using visual analytics to comb through TenantThread's internal communications to establish whether they made a deliberate decision to leak the merger information or the system simply broke down under pressure.\n        Our goal is to build an interactive Shiny application that democratises data and empowers\n        analysts to explore, interrogate and communicate findings visually.\n      \n      \n        The project emphasises interactivity, integrating techniques from\n        data analytics and visualisation to surface insights that static reports cannot.\n      \n      Read our proposal →\n    \n\n    \n      The Team\n      \n        \n          AT\n          \n            Andy Tai\n            Group Member\n          \n        \n        \n          GF\n          \n            Goh Fangyu\n            Group Member\n          \n        \n        \n          JY\n          \n            Jiang Yuxi\n            Group Member\n          \n        \n      \n    \n\n  \n\n  \n    Key milestones\n    \n      \n        \n        Now\n        Project setup & proposal\n      \n      \n      \n        \n        10 Jun\n        Proposal published on Vercel\n      \n      \n      \n        \n        1 Jul\n        Poster uploaded on eLearn\n      \n      \n      \n        \n        4 Jul\n        Poster presentation\n      \n      \n      \n        \n        5 Jul\n        Final submission"
   }
 ]

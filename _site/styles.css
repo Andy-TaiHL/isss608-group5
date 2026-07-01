@@ -255,3 +255,40 @@ a { color: #185FA5; }
 .navbar { background: #0a1628 !important; }
 .navbar-brand, .nav-link { color: rgba(255,255,255,0.8) !important; }
 .nav-link:hover { color: #fff !important; }
+
+/* ── Hero Buttons ── */
+.hero-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.75rem;
+  flex-wrap: wrap;
+}
+
+.hero-btn-primary {
+  display: inline-block;
+  background: #378ADD;
+  color: #ffffff !important;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.6rem 1.4rem;
+  border-radius: 6px;
+  text-decoration: none !important;
+  transition: background 0.2s;
+}
+
+.hero-btn-primary:hover { background: #185FA5; }
+
+.hero-btn-secondary {
+  display: inline-block;
+  background: transparent;
+  color: rgba(255,255,255,0.8) !important;
+  font-size: 0.85rem;
+  font-weight: 400;
+  padding: 0.6rem 1.4rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.3);
+  text-decoration: none !important;
+  transition: border-color 0.2s;
+}
+
+.hero-btn-secondary:hover { border-color: rgba(255,255,255,0.7); }

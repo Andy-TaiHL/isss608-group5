@@ -10,8 +10,14 @@ website:
         text: Home
       - href: proposal.qmd
         text: Proposal
+      - href: poster.qmd
+        text: Poster
       - href: about.qmd
         text: About
+    right:
+      - text: "Shiny App ↗"
+        href: https://isss608group5.shinyapps.io/vast-challenge2026/
+        target: _blank
 
 format:
   html:

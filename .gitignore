@@ -8,7 +8,6 @@ _site/
 
 # Data files — do not push to GitHub
 shiny-app/data/*.csv
-shiny-app/data/*.json
 shiny-app/data/*.xlsx
 shiny-app/data/*.xls
 shiny-app/data/*.rds
