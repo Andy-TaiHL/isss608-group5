@@ -146,20 +146,7 @@ networkUI <- function(id) {
         /* Sidebar font sizes */
         .bslib-sidebar-layout > .sidebar { font-size: 13px !important; }
         .bslib-sidebar-layout > .sidebar .control-label { font-size: 12px !important; margin-bottom: 3px !important; }
-        .bslib-sidebar-layout > .sidebar .selectize-input { font-size: 12px !important; min-height: 30px !important; padding: 4px 28px 4px 8px !important; position: relative !important; }
-        .bslib-sidebar-layout > .sidebar .selectize-input::after {
-          content: '' !important;
-          position: absolute !important;
-          right: 10px !important;
-          top: 50% !important;
-          transform: translateY(-50%) !important;
-          width: 0 !important;
-          height: 0 !important;
-          border-left: 5px solid transparent !important;
-          border-right: 5px solid transparent !important;
-          border-top: 6px solid #64748b !important;
-          pointer-events: none !important;
-        }
+        .bslib-sidebar-layout > .sidebar .selectize-input { font-size: 12px !important; min-height: 30px !important; padding: 4px 8px !important; position: relative !important; }
         .bslib-sidebar-layout > .sidebar .form-control { font-size: 12px !important; padding: 4px 8px !important; height: 30px !important; }
         /* Restore dropdown arrow on select elements - override Bootstrap 5 */
         select, select.form-control, select.form-select,
@@ -169,7 +156,6 @@ networkUI <- function(id) {
           appearance: menulist !important;
           background-image: none !important;
         }
-        /* Arrow for ALL selectize inputs (sidebar already has its own) */
         .shiny-input-container .selectize-control {
           position: relative !important;
         }
@@ -446,15 +432,15 @@ networkUI <- function(id) {
             tags$label("Highlight Agent Path:",
                        style = "color:#BFC7D5; font-size:13px; font-family:Inter,sans-serif;
                                 font-weight:600; white-space:nowrap; margin:0;"),
-            div(style = "width:140px; margin-bottom:-15px;",
+            div(style = "width:160px; margin-bottom:-15px;",
                 selectizeInput(ns("sel_node_id"), NULL,
-                               choices  = c("(all agents)" = "",
+                               choices  = c("All Agents" = "",
                                             setNames(
                                               sort(unique(c(reply_edges$from, reply_edges$to))),
                                               gsub("-Agent$", "", sort(unique(c(reply_edges$from, reply_edges$to))))
                                             )),
                                selected = "",
-                               options  = list(placeholder = "(all agents)")
+                               options  = list(placeholder = "All Agents")
                 )
             ),
             tags$button("Reset", id = ns("reset_selection"),
@@ -463,8 +449,7 @@ networkUI <- function(id) {
                                  padding:0 10px; height:34px; line-height:34px;
                                  background:#1e3a5f; color:#BFC7D5;
                                  border:1px solid #2F80ED; border-radius:4px;
-                                 cursor:pointer; flex-shrink:0;
-                                 margin-right:20px;"),
+                                 cursor:pointer; flex-shrink:0;"),
             # Summary inline on same row
             uiOutput(ns("selection_summary"))
         ),
@@ -794,7 +779,7 @@ networkServer <- function(id) {
     }, ignoreInit = TRUE)
     
     observeEvent(input$reset_selection, {
-      updateSelectizeInput(session, "sel_node_id", selected = "")
+      updateSelectInput(session, "sel_node_id", selected = "")
       visNetworkProxy(session$ns("network_graph")) %>%
         visSelectNodes(id = list())
     })
@@ -886,7 +871,7 @@ networkServer <- function(id) {
       period_note <- switch(time_period,
                             "Pre-Embargo"          = "During normal pre-embargo operations, communication patterns reflect routine coordination.",
                             "Embargo\u2192Leak"    = "With the embargo active, communication intensified as agents coordinated around information control.",
-                            "Post-Leak"            = "Following the @Elena leak, agents shifted focus to damage control and crisis response.",
+                            "Post-Leak"            = "Following Social-Manager's accidental mention of @ElenaMarquez which breached the embargo, Legal took over crisis coordination — briefing leadership, issuing a social media hold, and directing the team response.",
                             "Crisis Day"           = "On the crisis day (5 Jun), communication was at its most concentrated as the formal breach unfolded.",
                             "Entire Investigation" = "Across the full investigation period, patterns reflect both routine and crisis-driven communication."
       )
